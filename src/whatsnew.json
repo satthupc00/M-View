@@ -1,13 +1,12 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "date": "2026-10-28",
   "new": [
-    "Chuột phải vào ảnh trong Explorer có thêm mục \"Mở bằng Mon View (cửa sổ mới)\"",
-    "Mỗi định dạng ảnh (PNG, JPG, GIF, WEBP, ICO, BMP, PSD, PSB, TGA, TIFF) có icon riêng trong Explorer",
-    "Tên ảnh đang mở hiện trên thanh taskbar"
+    "Logo mới cho Mon View: xấp ảnh màu vàng trên nền tối"
   ],
   "improved": [
-    "Bỏ cách giữ Ctrl + double click để mở cửa sổ mới, thay bằng menu chuột phải cho chắc chắn hơn"
+    "Icon rõ nét ở cỡ nhỏ trên taskbar (vẽ riêng cho cỡ 16, 20, 24px)",
+    "Icon theo loại file trong Explorer đổi sang logo mới cho đồng bộ"
   ],
   "fixed": []
 }

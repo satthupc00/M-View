@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" shape-rendering="crispEdges">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FBE6B2"/><stop offset="1" stop-color="#E2B66E"/></linearGradient>
+<linearGradient id="m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7D79A"/><stop offset="1" stop-color="#C9904A"/></linearGradient></defs>
+<rect x="0" y="0" width="16" height="16" rx="4" fill="#19181B" shape-rendering="geometricPrecision"/>
+<rect x="1" y="6" width="10" height="8" rx="1" fill="#8E5D2C"/>
+<rect x="2" y="5" width="10" height="8" fill="#19181B"/>
+<rect x="3" y="4" width="10" height="8" rx="1" fill="#B98042"/>
+<rect x="4" y="3" width="10" height="8" fill="#19181B"/>
+<rect x="5" y="2" width="10" height="8" rx="1" fill="url(#g)"/>
+<rect x="6" y="3" width="8" height="6" fill="#221A15"/>
+<polygon points="6,9 9,5 11,8 12,7 14,9" fill="url(#m)" shape-rendering="geometricPrecision"/>
+<circle cx="12" cy="5" r="0.95" fill="#F6D592" shape-rendering="geometricPrecision"/>
+</svg>
