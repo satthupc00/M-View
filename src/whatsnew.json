@@ -1,18 +1,13 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "date": "2026-10-28",
   "new": [
-    "Xem nhanh PNG, JPG, GIF (cả GIF động), WEBP, ICO, BMP, PSD, PSB, TGA, TIFF",
-    "Cửa sổ nhớ kích thước và vị trí lần mở trước, ảnh tự vừa khung",
-    "Phím + / − hoặc Ctrl + lăn chuột để zoom, Ctrl+0 chuyển qua lại 1:1 và vừa khung",
-    "Phím mũi tên trái/phải hoặc lăn chuột để xem ảnh trước/sau trong cùng thư mục",
-    "Chuột giữa để xem toàn màn hình",
-    "Đổi màu nền ngoài ảnh, bật nền caro để xem vùng trong suốt (alpha)",
-    "Double click ảnh khi app đang mở sẽ mở vào cửa sổ hiện tại; giữ Ctrl + double click để mở cửa sổ mới",
-    "Menu chuột phải: xoay ảnh, sao chép ảnh/đường dẫn, mở thư mục chứa ảnh, mở bằng app khác, chuyển vào thùng rác",
-    "Cài đặt app mặc định cho từng định dạng ảnh",
-    "Tự kiểm tra và cài bản cập nhật mới"
+    "Chuột phải vào ảnh trong Explorer có thêm mục \"Mở bằng Mon View (cửa sổ mới)\"",
+    "Mỗi định dạng ảnh (PNG, JPG, GIF, WEBP, ICO, BMP, PSD, PSB, TGA, TIFF) có icon riêng trong Explorer",
+    "Tên ảnh đang mở hiện trên thanh taskbar"
   ],
-  "improved": [],
+  "improved": [
+    "Bỏ cách giữ Ctrl + double click để mở cửa sổ mới, thay bằng menu chuột phải cho chắc chắn hơn"
+  ],
   "fixed": []
 }

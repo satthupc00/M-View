@@ -1,7 +1,7 @@
 {
   "name": "mon-view",
   "productName": "Mon View",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Mon View - xem ảnh nhanh",
   "author": "Mondiro",
   "license": "UNLICENSED",
@@ -19,7 +19,6 @@
   "dependencies": {
     "ag-psd": "^33.0.0",
     "electron-updater": "^6.8.11",
-    "koffi": "^2.16.3",
     "utif": "^3.1.0"
   },
   "repository": "https://github.com/satthupc00/M-View",
@@ -34,16 +33,9 @@
     "files": [
       "src/**/*",
       "package.json",
-      "!**/node_modules/koffi/build/koffi/!(win32_x64)/**",
-      "!**/node_modules/koffi/src/**",
-      "!**/node_modules/koffi/vendor/**",
-      "!**/node_modules/koffi/doc/**",
       "!**/node_modules/ag-psd/{src,dist-es,clean.js}/**",
       "!**/node_modules/**/*.map",
       "!**/node_modules/**/*.ts"
-    ],
-    "asarUnpack": [
-      "node_modules/koffi/**"
     ],
     "win": {
       "target": [
@@ -62,27 +54,101 @@
       "perMachine": false,
       "shortcutName": "Mon View",
       "uninstallDisplayName": "Mon View",
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh"
     },
     "fileAssociations": [
       {
         "ext": [
-          "png",
+          "png"
+        ],
+        "name": "MonView.png",
+        "description": "Ảnh PNG",
+        "icon": "filetypes/png.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
           "jpg",
           "jpeg",
-          "jfif",
-          "gif",
-          "webp",
-          "ico",
-          "bmp",
-          "psd",
-          "psb",
-          "tga",
+          "jfif"
+        ],
+        "name": "MonView.jpg",
+        "description": "Ảnh JPEG",
+        "icon": "filetypes/jpg.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "gif"
+        ],
+        "name": "MonView.gif",
+        "description": "Ảnh GIF",
+        "icon": "filetypes/gif.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "webp"
+        ],
+        "name": "MonView.webp",
+        "description": "Ảnh WebP",
+        "icon": "filetypes/webp.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "ico"
+        ],
+        "name": "MonView.ico",
+        "description": "Icon",
+        "icon": "filetypes/ico.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "bmp"
+        ],
+        "name": "MonView.bmp",
+        "description": "Ảnh BMP",
+        "icon": "filetypes/bmp.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "psd"
+        ],
+        "name": "MonView.psd",
+        "description": "Photoshop PSD",
+        "icon": "filetypes/psd.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "psb"
+        ],
+        "name": "MonView.psb",
+        "description": "Photoshop PSB",
+        "icon": "filetypes/psb.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "tga"
+        ],
+        "name": "MonView.tga",
+        "description": "Ảnh TGA",
+        "icon": "filetypes/tga.ico",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
           "tif",
           "tiff"
         ],
-        "name": "MonView.Image",
-        "description": "Ảnh",
+        "name": "MonView.tif",
+        "description": "Ảnh TIFF",
+        "icon": "filetypes/tif.ico",
         "role": "Viewer"
       }
     ],

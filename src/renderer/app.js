@@ -87,6 +87,7 @@ function renderHeader() {
   const has = !!file;
   $('#fileInfo').hidden = !has; $('#empty').hidden = has || !!$('#msg').textContent && !$('#msg').hidden;
   $('#fname').textContent = has ? baseName(file) : '';
+  document.title = has ? `${baseName(file)} - Mon View` : 'Mon View'; // tên ảnh hiện trên taskbar
   $('#fidx').textContent = has && list.length ? `${idx + 1} / ${list.length}` : '';
   $('#fpath').textContent = has ? file : 'Chưa mở ảnh';
   $('#fpath').title = has ? file : '';

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><defs>
+  <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E3E7EE"/></linearGradient>
+  <linearGradient id="lb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB547"/><stop offset="1" stop-color="#D57A06"/></linearGradient>
+  <linearGradient id="cd" x1="0" y1="16" x2="0" y2="432" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5AB0FF"/><stop offset="1" stop-color="#1747B8"/></linearGradient>
+  <linearGradient id="mt" x1="0" y1="190" x2="0" y2="432" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3DDCC0"/><stop offset="1" stop-color="#128C78"/></linearGradient>
+  <radialGradient id="sn" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FF8F91"/><stop offset=".55" stop-color="#E5383B"/><stop offset="1" stop-color="#C2181C"/></radialGradient>
+  <clipPath id="ck"><rect x="20" y="16" width="472" height="416" rx="72"/></clipPath></defs>
+  <ellipse cx="128" cy="248" rx="88" ry="6" fill="#000" opacity=".25"/>
+  <path d="M44 12 H160 L212 64 V236 a8 8 0 0 1 -8 8 H52 a8 8 0 0 1 -8 -8 Z" fill="#B9C0CC"/>
+  <path d="M44 8 H160 L212 60 V232 a8 8 0 0 1 -8 8 H52 a8 8 0 0 1 -8 -8 V16 a8 8 0 0 1 8 -8Z" fill="url(#pg)" stroke="#8C94A3" stroke-width="3"/>
+  <path d="M160 8 V52 a8 8 0 0 0 8 8 H212 Z" fill="#CBD1DB" stroke="#8C94A3" stroke-width="3" stroke-linejoin="round"/>
+  <g transform="translate(70 66) scale(0.2265625)">
+  <rect x="20" y="44" width="472" height="416" rx="72" fill="#0F2E78"/>
+  <rect x="20" y="16" width="472" height="416" rx="72" fill="url(#cd)"/>
+  <g clip-path="url(#ck)"><path d="M262 440 L364 292 Q380 270 398 290 L520 420 V440 Z" fill="#14907C"/>
+  <path d="M-10 370 L160 200 Q182 178 204 200 L444 440 H-10 Z" fill="url(#mt)"/></g>
+  <circle cx="364" cy="152" r="74" fill="url(#sn)"/></g>
+  <rect x="22" y="160" width="212" height="70" rx="14" fill="#D57A06"/>
+  <rect x="22" y="154" width="212" height="70" rx="14" fill="url(#lb)"/>
+  <rect x="34" y="160" width="90" height="8" rx="4" fill="#fff" opacity=".35"/>
+  <text x="128" y="209.16" text-anchor="middle" font-family="Segoe UI, Arial, DejaVu Sans, sans-serif" font-weight="800" font-size="56" fill="#fff" letter-spacing="1">ICO</text></svg>

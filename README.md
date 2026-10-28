@@ -13,6 +13,6 @@ Trình xem ảnh nhanh cho Windows: PNG, JPG, GIF (cả GIF động), WEBP, ICO,
 | Menu lệnh | Chuột phải |
 | Nền caro / đổi màu nền | A / B |
 | Xoay | R / Shift+R |
-| Mở cửa sổ mới | Giữ Ctrl + double click file trong Explorer, hoặc Ctrl+N |
+| Mở cửa sổ mới | Chuột phải file trong Explorer → "Mở bằng Mon View (cửa sổ mới)", hoặc Ctrl+N |
 
 Created by Mondiro

@@ -8,20 +8,6 @@ const { pathToFileURL } = require('url');
 const { execFile } = require('child_process');
 const { Worker } = require('worker_threads');
 
-// ---- Đọc phím Ctrl càng sớm càng tốt (Ctrl + double click ngoài Explorer = cửa sổ mới) ----
-let getKeyState = null;
-function isCtrlDown() {
-  if (process.platform !== 'win32') return false;
-  try {
-    if (!getKeyState) {
-      const koffi = require('koffi');
-      getKeyState = koffi.load('user32.dll').func('short __stdcall GetAsyncKeyState(int vKey)');
-    }
-    return (getKeyState(0x11) & 0x8000) !== 0; // VK_CONTROL
-  } catch { return false; }
-}
-const ctrlAtLaunch = isCtrlDown();
-
 const EXTS = ['png', 'jpg', 'jpeg', 'jfif', 'gif', 'webp', 'ico', 'bmp', 'psd', 'psb', 'tga', 'tif', 'tiff'];
 const DECODED = new Set(['psd', 'psb', 'tga', 'tif', 'tiff']);
 const extOf = p => path.extname(p).slice(1).toLowerCase();
@@ -39,7 +25,8 @@ function fileArgs(argv, cwd) {
   return out;
 }
 
-const gotLock = app.requestSingleInstanceLock({ ctrl: ctrlAtLaunch, files: fileArgs(process.argv) });
+// "--new-window": lệnh "Mở bằng Mon View (cửa sổ mới)" trong menu chuột phải của Explorer
+const gotLock = app.requestSingleInstanceLock({ newWindow: process.argv.includes('--new-window'), files: fileArgs(process.argv) });
 if (!gotLock) { app.quit(); return; }
 
 app.setAppUserModelId('com.mondiro.monview');
@@ -112,13 +99,13 @@ function openFile(file, newWindow) {
 
 app.on('second-instance', (_e, argv, cwd, data) => {
   const files = data && Array.isArray(data.files) ? data.files : fileArgs(argv, cwd);
-  const ctrl = (data && data.ctrl) || isCtrlDown();
+  const newWin = (data && data.newWindow) || argv.includes('--new-window');
   if (!files.length) {
-    if (ctrl || !lastFocused || lastFocused.isDestroyed()) createWindow(null, { cascade: true });
+    if (newWin || !lastFocused || lastFocused.isDestroyed()) createWindow(null, { cascade: true });
     else { lastFocused.show(); lastFocused.focus(); }
     return;
   }
-  openFile(files[0], ctrl);
+  openFile(files[0], newWin);
 });
 
 app.whenReady().then(() => {
