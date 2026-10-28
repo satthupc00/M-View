@@ -1,12 +1,9 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "date": "2026-10-28",
-  "new": [
-    "Logo mới cho Mon View: xấp ảnh màu vàng trên nền tối"
-  ],
+  "new": [],
   "improved": [
-    "Icon rõ nét ở cỡ nhỏ trên taskbar (vẽ riêng cho cỡ 16, 20, 24px)",
-    "Icon theo loại file trong Explorer đổi sang logo mới cho đồng bộ"
+    "Icon theo loại file trong Explorer đổi sang dạng chữ vàng trên nền tối (PNG, JPG, PSD…), đọc rõ cả ở cỡ nhỏ"
   ],
   "fixed": []
 }
