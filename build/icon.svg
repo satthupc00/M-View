@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="a-card" x1="0" y1="16" x2="0" y2="432" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5AB0FF"/><stop offset="1" stop-color="#1747B8"/></linearGradient>
+    <linearGradient id="a-mtn" x1="0" y1="190" x2="0" y2="432" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3DDCC0"/><stop offset="1" stop-color="#128C78"/></linearGradient>
+    <linearGradient id="a-mtn2" x1="0" y1="270" x2="0" y2="432" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1FAE96"/><stop offset="1" stop-color="#0B6456"/></linearGradient>
+    <radialGradient id="a-sun" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FF8F91"/><stop offset=".55" stop-color="#E5383B"/><stop offset="1" stop-color="#C2181C"/></radialGradient>
+    <clipPath id="a-clip"><rect x="20" y="16" width="472" height="416" rx="72"/></clipPath>
+  </defs>
+  <ellipse cx="256" cy="482" rx="212" ry="16" fill="#000" opacity=".28"/>
+  <rect x="20" y="44" width="472" height="416" rx="72" fill="#0F2E78"/>
+  <rect x="20" y="16" width="472" height="416" rx="72" fill="url(#a-card)"/>
+  <g clip-path="url(#a-clip)">
+    <path d="M262 440 L364 292 Q380 270 398 290 L520 420 V440 Z" fill="url(#a-mtn2)"/>
+    <path d="M-10 370 L160 200 Q182 178 204 200 L444 440 H-10 Z" fill="url(#a-mtn)"/>
+  </g>
+  <circle cx="364" cy="152" r="74" fill="#8E1013" transform="translate(0 12)"/>
+  <circle cx="364" cy="152" r="74" fill="url(#a-sun)"/>
+  <ellipse cx="338" cy="122" rx="26" ry="14" fill="#fff" opacity=".55" transform="rotate(-30 338 122)"/>
+  <ellipse cx="124" cy="58" rx="72" ry="16" fill="#fff" opacity=".42" transform="rotate(-8 124 58)"/>
+</svg>

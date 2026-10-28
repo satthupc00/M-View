@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' mview: data: blob:; connect-src 'self' mview:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>Mon View</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="win" id="win">
+  <header class="top">
+    <div class="brand">
+      <img class="brand-icon" src="icon.svg" alt="">
+      <div class="brand-name"><span><span class="m">Mon</span> <span class="a">View</span></span><span class="latest" id="latest" hidden>latest</span></div>
+    </div>
+    <div class="file-info" id="fileInfo" hidden><span class="fn" id="fname"></span><span class="idx" id="fidx"></span></div>
+    <div class="tools">
+      <button class="ibtn" id="zOut" title="Thu nhỏ (−)" aria-label="Thu nhỏ"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M20 20l-4-4"/></svg></button>
+      <button class="zoomval" id="zVal" title="Fit ⇄ 1:1 (Ctrl+0)">–</button>
+      <button class="ibtn" id="zIn" title="Phóng to (+)" aria-label="Phóng to"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M20 20l-4-4"/></svg></button>
+      <span class="sep opt"></span>
+      <button class="ibtn opt" id="bAlpha" title="Nền caro xem alpha (A)" aria-label="Nền caro xem alpha"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/><path d="M4 4h8v8H4zM12 12h8v8h-8z" fill="currentColor" stroke="none" opacity=".55"/></svg></button>
+      <button class="ibtn swatch-btn opt" id="bBg" title="Đổi màu nền (B)" aria-label="Đổi màu nền"><i id="bgDot"></i></button>
+      <button class="ibtn" id="bSet" title="Cài đặt" aria-label="Cài đặt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <button class="ibtn upd" id="bUpd" title="Kiểm tra cập nhật" aria-label="Kiểm tra cập nhật"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-15-6.7L3 8M3 3v5h5M3 12a9 9 0 0 0 15 6.7l3-2.7M21 21v-5h-5"/></svg></button>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="imgwrap" id="wrap"></div>
+    <div class="nav l" id="navL" title="Ảnh trước (← / lăn chuột lên)"><i><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></i></div>
+    <div class="nav r" id="navR" title="Ảnh sau (→ / lăn chuột xuống)"><i><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></i></div>
+    <div class="zoomtip" id="ztip"></div>
+    <div class="loading" id="loading" hidden><i></i></div>
+    <div class="msg" id="msg" hidden></div>
+    <div class="empty" id="empty" hidden>
+      <h2>Chưa mở ảnh nào</h2>
+      <p>Kéo thả ảnh vào đây, hoặc double click ảnh trong Explorer</p>
+      <button class="btn-main" id="bOpen">Mở ảnh (Ctrl+O)</button>
+      <div class="keys">
+        <span><kbd>←</kbd> <kbd>→</kbd> / lăn chuột</span><span>Ảnh trước / sau</span>
+        <span><kbd>+</kbd> <kbd>−</kbd> / <kbd>Ctrl</kbd>+lăn chuột</span><span>Zoom</span>
+        <span><kbd>Ctrl</kbd>+<kbd>0</kbd></span><span>1:1 ⇄ Fit</span>
+        <span><kbd>Chuột giữa</kbd></span><span>Toàn màn hình</span>
+      </div>
+      <p class="fmts-line">PNG · JPG · GIF · WEBP · ICO · BMP · PSD · PSB · TGA · TIFF</p>
+    </div>
+    <div class="drop" id="drop" hidden><span>Thả để mở</span></div>
+    <div class="updcard" id="updcard" hidden></div>
+  </main>
+
+  <footer class="status">
+    <span class="path" id="fpath"></span>
+    <span class="meta" id="fmeta"></span>
+    <span class="credit">Created by Mondiro</span>
+  </footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
