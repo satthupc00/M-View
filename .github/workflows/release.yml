@@ -1,8 +1,11 @@
 name: Release
 
+# Tự phát hành khi số version trong package.json đổi (chưa có Release cho version đó)
 on:
   push:
-    tags: ['v*']
+    branches: ['claude/ecstatic-lamport-unej31', 'main']
+    paths: ['package.json', '.github/workflows/release.yml']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,19 +15,37 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check version
+        id: ver
+        shell: bash
+        run: |
+          V=$(node -p "require('./package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if gh release view "v$V" >/dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-node@v4
+        if: steps.ver.outputs.exists == 'false'
         with:
           node-version: 20
           cache: npm
+
       - run: npm ci
+        if: steps.ver.outputs.exists == 'false'
+
       - name: Build & publish installer
+        if: steps.ver.outputs.exists == 'false'
         run: npx electron-builder --win --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Release notes from whatsnew.json
+        if: steps.ver.outputs.exists == 'false'
         shell: bash
         run: |
           node scripts/release-notes.js > notes.md
-          gh release edit "${GITHUB_REF_NAME}" --title "Mon View ${GITHUB_REF_NAME}" --notes-file notes.md
+          gh release edit "v${{ steps.ver.outputs.version }}" --title "Mon View v${{ steps.ver.outputs.version }}" --notes-file notes.md --draft=false --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
