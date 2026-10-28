@@ -1,0 +1,422 @@
+<title>Mon View Layout</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: 1 cửa sổ Electron giả lập — header 58px (kéo được) → stage ảnh → status bar có credit */
+:root{
+  --chrome:#1F2126; --panel:#26292F; --line:#363A42; --hover:#2F333A; --stage:#2B2D31;
+  --text:#E8E9EC; --muted:#8D929C; --red:#E5383B; --warn:#F2B84B; --selected-bg:#3A2426;
+  --ok:#3DDC8A; --page:#15171B;
+  --ease-out:cubic-bezier(.22,1,.36,1); --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --t-fast:.12s; --t-med:.22s;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--page);color:var(--text);font:13px/1.4 "Segoe UI",system-ui,sans-serif;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px;
+  display:flex;flex-direction:column;gap:12px}
+:focus-visible{outline:2px solid var(--red);outline-offset:1px}
+button,select,input{font:inherit;color:inherit;
+  transition:background-color var(--t-fast) ease,border-color var(--t-fast) ease,color var(--t-fast) ease,
+  box-shadow var(--t-med) var(--ease-out),transform var(--t-med) var(--ease-out),opacity var(--t-fast) ease}
+button:not(:disabled):active{transform:scale(.95);transition-duration:.06s}
+kbd{font:600 11px/1 "Segoe UI",system-ui;background:var(--panel);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 6px;color:var(--text)}
+
+/* ---- thanh chọn trạng thái preview (không thuộc app) ---- */
+.demo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;color:var(--muted)}
+.demo b{color:var(--text);font-weight:600;margin-right:4px}
+.demo button{background:transparent;border:1px solid var(--line);border-radius:20px;padding:4px 12px;cursor:pointer;color:var(--muted)}
+.demo button:hover{border-color:var(--red);color:var(--text)}
+.demo button.on{background:var(--selected-bg);border-color:var(--red);color:var(--text)}
+
+/* ---- cửa sổ app ---- */
+.win{flex:1;min-height:520px;display:flex;flex-direction:column;background:var(--chrome);border:1px solid #000;
+  border-radius:8px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);position:relative;user-select:none}
+.top{display:flex;align-items:center;gap:16px;padding:10px 150px 10px 14px;min-height:58px;border-bottom:1px solid var(--line);flex:0 0 auto;position:relative}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-icon{width:34px;height:34px;flex:0 0 auto}
+.brand-name{font-size:17px;font-weight:700;line-height:34px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.brand-name .m{color:var(--red)} .brand-name .a{color:#fff}
+.latest{font-size:10.5px;font-weight:800;color:#2EB872;background:#2eb87224;padding:1px 7px;border-radius:20px;line-height:16px;animation:pop .32s var(--ease-spring)}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.file-info{flex:1;min-width:0;display:flex;align-items:center;gap:10px;justify-content:center;color:var(--muted)}
+.file-info .fn{color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.file-info .idx{font-variant-numeric:tabular-nums;flex:0 0 auto}
+.tools{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+.ibtn{width:32px;height:32px;display:grid;place-items:center;border:1px solid transparent;background:transparent;border-radius:6px;cursor:pointer;color:var(--text);position:relative}
+.ibtn:hover{border-color:var(--red);transform:translateY(-1px)}
+.ibtn.on{background:rgba(229,56,59,.12);border-color:var(--red)}
+.ibtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.zoomval{min-width:54px;text-align:center;font-variant-numeric:tabular-nums;font-weight:600;background:var(--panel);border:1px solid var(--line);border-radius:6px;height:28px;line-height:26px;padding:0 6px;cursor:pointer}
+.zoomval:hover{border-color:var(--red)}
+.swatch-btn i{width:16px;height:16px;border-radius:5px;border:1.5px solid #fff;display:block}
+.upd.latestok{color:var(--ok)}
+/* nút cửa sổ Windows (giả) */
+.wctl{position:absolute;top:0;right:0;height:58px;display:flex}
+.wctl span{width:46px;display:grid;place-items:center;color:#fff}
+.wctl span:hover{background:var(--hover)} .wctl span:last-child:hover{background:#C42B1C}
+.wctl svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:1}
+
+/* ---- stage ---- */
+.stage{flex:1;position:relative;overflow:hidden;background:var(--bg,var(--stage));cursor:default}
+.stage.pan{cursor:grab} .stage.pan.grabbing{cursor:grabbing}
+.imgwrap{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.imgwrap.anim{transition:transform var(--t-med) var(--ease-out)}
+.imgwrap.checker{background-color:#fff;background-image:linear-gradient(45deg,#CCCFD4 25%,transparent 25%,transparent 75%,#CCCFD4 75%),linear-gradient(45deg,#CCCFD4 25%,transparent 25%,transparent 75%,#CCCFD4 75%);
+  background-size:var(--ck) var(--ck);background-position:0 0,calc(var(--ck)/2) calc(var(--ck)/2)}
+.imgwrap canvas{display:block;image-rendering:auto}
+.imgwrap.pixel canvas{image-rendering:pixelated}
+.nav{position:absolute;top:0;bottom:0;width:90px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--t-med) ease;cursor:pointer}
+.nav.l{left:0} .nav.r{right:0}
+.stage:hover .nav{opacity:.45} .nav:hover{opacity:1!important}
+.nav i{width:40px;height:40px;border-radius:50%;background:rgba(31,33,38,.75);border:1px solid var(--line);display:grid;place-items:center}
+.nav svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.zoomtip{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(31,33,38,.85);border:1px solid var(--line);border-radius:8px;
+  padding:8px 16px;font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;opacity:0;pointer-events:none;transition:opacity .3s ease}
+.zoomtip.show{opacity:1;transition-duration:.06s}
+
+/* empty + drop */
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px}
+.empty h2{margin:0;font-size:20px;font-weight:700}
+.empty p{margin:0;color:var(--muted)}
+.empty .keys{display:grid;grid-template-columns:auto auto;gap:6px 14px;margin-top:10px;text-align:left;color:var(--muted)}
+.empty .keys span:nth-child(odd){text-align:right}
+.btn-main{background:var(--red);border:0;color:#fff;border-radius:6px;padding:8px 16px;font-weight:600;cursor:pointer;margin-top:4px}
+.btn-main:hover{background:#F04447;transform:translateY(-1px);box-shadow:0 6px 16px rgba(229,56,59,.35)}
+.drop{position:absolute;inset:10px;border:2px dashed var(--red);background:rgba(229,56,59,.08);border-radius:8px;display:grid;place-items:center;font-size:18px;font-weight:700;pointer-events:none}
+
+/* ---- status bar ---- */
+.status{display:flex;align-items:center;gap:14px;padding:6px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;flex:0 0 auto;min-height:30px}
+.status .path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+.status .meta{display:flex;gap:12px;font-variant-numeric:tabular-nums;flex:0 0 auto}
+.status .meta b{color:var(--text);font-weight:600}
+.tag{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--text);font-weight:600;font-size:11px}
+.credit{color:#6B707A;font-size:11px;white-space:nowrap}
+
+/* fullscreen (chuột giữa) */
+.win.fs .top,.win.fs .status{display:none}
+.win.fs .stage{background:var(--bg,var(--stage))}
+.fshint{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(31,33,38,.85);border:1px solid var(--line);border-radius:20px;padding:4px 12px;color:var(--muted);font-size:12px;animation:fade 2.4s forwards;pointer-events:none}
+@keyframes fade{0%,70%{opacity:1}100%{opacity:0}}
+
+/* ---- context menu ---- */
+.ctx{position:absolute;min-width:240px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px;box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:20;
+  animation:popin .18s var(--ease-out)}
+@keyframes popin{from{opacity:0;transform:translateY(4px) scale(.98)}}
+.ctx .it{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:5px;cursor:pointer}
+.ctx .it:hover{background:var(--hover);box-shadow:inset 3px 0 0 var(--red)}
+.ctx .it svg{width:15px;height:15px;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.ctx .it .k{margin-left:auto;color:var(--muted);font-size:11px}
+.ctx hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+.sw{display:flex;gap:6px;flex:0 0 auto}
+.ctx .sw{padding:6px 10px 6px 35px}
+.sw i{display:block;flex:0 0 auto;width:20px;height:20px;border-radius:5px;border:1px solid #ffffff30;cursor:pointer;transition:transform var(--t-med) var(--ease-spring)}
+.sw i:hover{transform:scale(1.15)} .sw i.on{outline:2px solid var(--red);outline-offset:1px}
+
+/* ---- settings modal ---- */
+.veil{position:absolute;inset:0;background:rgba(10,11,13,.6);display:grid;place-items:center;z-index:30;animation:veil .2s ease}
+@keyframes veil{from{opacity:0}}
+.dlg{width:min(560px,92%);max-height:88%;overflow:auto;background:var(--chrome);border:1px solid var(--line);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6);
+  animation:dlg .32s var(--ease-spring)}
+@keyframes dlg{from{transform:translateY(10px) scale(.96);opacity:0}}
+.dlg header{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);font-size:15px;font-weight:700}
+.dlg header .ibtn{margin-left:auto}
+.dlg section{padding:14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.dlg section:last-child{border-bottom:0}
+.dlg h4{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.fmts{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+.fmts label{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;cursor:pointer}
+.fmts label:hover{border-color:var(--red)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row .grow{flex:1;min-width:0;color:var(--muted)}
+.btn2{background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn2:hover{border-color:var(--red);transform:translateY(-1px)}
+.btn2 svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+input[type=checkbox]{appearance:none;width:16px;height:16px;margin:0;border:1.5px solid #5A5F69;border-radius:4px;background:var(--panel);display:inline-grid;place-content:center;cursor:pointer;flex:0 0 auto}
+input[type=checkbox]::after{content:'';width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg) scale(0);transition:transform var(--t-med) var(--ease-spring)}
+input[type=checkbox]:checked{background:var(--red);border-color:var(--red)}
+input[type=checkbox]:checked::after{transform:translateY(-1px) rotate(-45deg) scale(1)}
+input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:2px;cursor:pointer}
+.note{color:var(--muted);font-size:12px}
+
+/* ---- ghi chú dưới preview ---- */
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;color:var(--muted)}
+.notes div{background:var(--chrome);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.notes h3{margin:0 0 6px;color:var(--text);font-size:13px}
+.notes ul{margin:0;padding-left:18px;display:grid;gap:3px}
+
+@media (max-width:820px){.file-info{display:none}.top{padding-right:14px}.wctl{display:none}.tools .opt{display:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="demo" role="toolbar" aria-label="Trạng thái preview">
+  <b>Preview layout Mon View</b>
+  <button data-st="view" class="on">Đang xem ảnh</button>
+  <button data-st="empty">Chưa mở ảnh</button>
+  <button data-st="drop">Kéo thả file</button>
+  <button data-st="fs">Toàn màn hình</button>
+  <button data-st="ctx">Menu chuột phải</button>
+  <button data-st="set">Cài đặt</button>
+</div>
+
+<div class="win" id="win">
+  <header class="top">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5AB0FF"/><stop offset="1" stop-color="#1747B8"/></linearGradient>
+          <linearGradient id="gB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3DDCC0"/><stop offset="1" stop-color="#128C78"/></linearGradient>
+          <radialGradient id="gC" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#FF8F91"/><stop offset="1" stop-color="#C2181C"/></radialGradient>
+        </defs>
+        <rect x="4" y="11" width="56" height="46" rx="8" fill="#0F2E78"/>
+        <rect x="4" y="6" width="56" height="46" rx="8" fill="url(#gA)"/>
+        <path d="M4 42 L22 24 L36 38 L44 30 L60 46 V44 a8 8 0 0 1 -8 8 H12 a8 8 0 0 1 -8 -8Z" fill="url(#gB)"/>
+        <circle cx="45" cy="19" r="7" fill="url(#gC)"/>
+        <ellipse cx="14" cy="13" rx="7" ry="2.6" fill="#fff" opacity=".35"/>
+      </svg>
+      <div class="brand-name"><span><span class="m">Mon</span> <span class="a">View</span></span><span class="latest" id="latest" hidden>latest</span></div>
+    </div>
+    <div class="file-info"><span class="fn" id="fname">char_concept_v03.png</span><span class="idx" id="fidx">1 / 4</span></div>
+    <div class="tools">
+      <button class="ibtn" id="zOut" title="Thu nhỏ (−)" aria-label="Thu nhỏ"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M20 20l-4-4"/></svg></button>
+      <button class="zoomval" id="zVal" title="Fit / 1:1 (Ctrl+0)">100%</button>
+      <button class="ibtn" id="zIn" title="Phóng to (+)" aria-label="Phóng to"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M20 20l-4-4"/></svg></button>
+      <span class="sep opt"></span>
+      <button class="ibtn opt" id="bAlpha" title="Nền caro xem alpha (A)" aria-label="Nền caro xem alpha"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16" /><path d="M4 4h8v8H4zM12 12h8v8h-8z" fill="currentColor" stroke="none" opacity=".55"/></svg></button>
+      <button class="ibtn swatch-btn opt" id="bBg" title="Màu nền (B)" aria-label="Màu nền"><i id="bgDot"></i></button>
+      <button class="ibtn" id="bSet" title="Cài đặt" aria-label="Cài đặt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <button class="ibtn upd" id="bUpd" title="Kiểm tra cập nhật" aria-label="Kiểm tra cập nhật"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-15-6.7L3 8M3 3v5h5M3 12a9 9 0 0 0 15 6.7l3-2.7M21 21v-5h-5"/></svg></button>
+    </div>
+    <div class="wctl" aria-hidden="true">
+      <span><svg viewBox="0 0 10 10"><path d="M0 5h10"/></svg></span>
+      <span><svg viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9"/></svg></span>
+      <span><svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10"/></svg></span>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="imgwrap" id="wrap"></div>
+    <div class="nav l" id="navL" title="Ảnh trước (←)"><i><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></i></div>
+    <div class="nav r" id="navR" title="Ảnh sau (→)"><i><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></i></div>
+    <div class="zoomtip" id="ztip">100%</div>
+  </main>
+
+  <footer class="status">
+    <span class="path" id="fpath">D:\Projects\Slot_Dragon\Art\Concept\char_concept_v03.png</span>
+    <span class="meta" id="fmeta"></span>
+    <span class="credit">Created by Mondiro</span>
+  </footer>
+</div>
+
+<div class="notes">
+  <div><h3>Chuột &amp; phím</h3><ul>
+    <li><kbd>Double click</kbd> file ngoài Explorer: mở vào cửa sổ đang mở</li>
+    <li><kbd>Ctrl</kbd> + <kbd>Double click</kbd>: mở cửa sổ mới</li>
+    <li><kbd>+</kbd> <kbd>−</kbd> / lăn chuột: zoom tại vị trí con trỏ</li>
+    <li><kbd>Ctrl</kbd>+<kbd>0</kbd>: 1:1 ⇄ Fit</li>
+    <li><kbd>←</kbd> <kbd>→</kbd>: ảnh trước / sau trong cùng thư mục</li>
+    <li><kbd>Chuột giữa</kbd>: canvas toàn màn hình (bấm lại hoặc <kbd>Esc</kbd> để thoát)</li>
+    <li><kbd>Chuột phải</kbd>: menu lệnh · kéo chuột trái khi ảnh to hơn khung: di chuyển ảnh</li>
+  </ul></div>
+  <div><h3>Bố cục</h3><ul>
+    <li>Header: logo + Mon View, giữa là tên file + vị trí (1 / 4), phải là zoom, nền caro, màu nền, cài đặt, cập nhật</li>
+    <li>Không có sidebar để canvas rộng nhất có thể</li>
+    <li>Thanh dưới: đường dẫn, kích thước, định dạng, dung lượng, số layer (PSD/PSB), số frame (GIF)</li>
+    <li>Cửa sổ nhớ kích thước + vị trí lần trước</li>
+  </ul></div>
+  <div><h3>Thử trong preview này</h3><ul>
+    <li>Bấm vào vùng ảnh rồi dùng phím như trên</li>
+    <li>Ảnh mẫu: PNG có alpha, ảnh nền JPG, GIF động, icon ICO 256px</li>
+    <li>Icon trên header là bản nháp, sẽ vẽ chính thức khi làm app</li>
+  </ul></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const win=$('#win'),stage=$('#stage'),wrap=$('#wrap');
+const BGS=['#2B2D31','#1F2126','#000000','#808080','#FFFFFF','#E8E2D6'];
+let bg=BGS[0],alpha=true;
+
+/* ---- ảnh mẫu vẽ bằng canvas ---- */
+function mk(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h,0);return c}
+const samples=[
+ {name:'char_concept_v03.png',fmt:'PNG',size:'2.4 MB',w:1400,h:1600,extra:'RGBA',draw:(g,w,h)=>{
+   g.clearRect(0,0,w,h);
+   const sh=g.createRadialGradient(w/2,h*.92,10,w/2,h*.92,420);sh.addColorStop(0,'rgba(0,0,0,.45)');sh.addColorStop(1,'rgba(0,0,0,0)');
+   g.fillStyle=sh;g.beginPath();g.ellipse(w/2,h*.92,430,70,0,0,7);g.fill();
+   let gr=g.createLinearGradient(0,600,0,1450);gr.addColorStop(0,'#7B5CFF');gr.addColorStop(1,'#3A1FA8');
+   g.fillStyle=gr;g.beginPath();g.moveTo(w/2-330,1450);g.quadraticCurveTo(w/2-360,800,w/2,720);g.quadraticCurveTo(w/2+360,800,w/2+330,1450);g.closePath();g.fill();
+   gr=g.createRadialGradient(w/2-90,400,40,w/2,470,300);gr.addColorStop(0,'#FFD9B8');gr.addColorStop(1,'#D9875A');
+   g.fillStyle=gr;g.beginPath();g.arc(w/2,470,260,0,7);g.fill();
+   g.fillStyle='#E5383B';g.beginPath();g.moveTo(w/2-280,420);g.quadraticCurveTo(w/2,60,w/2+290,400);g.quadraticCurveTo(w/2+120,260,w/2-280,420);g.fill();
+   g.fillStyle='#1F2126';g.beginPath();g.arc(w/2-95,500,26,0,7);g.arc(w/2+95,500,26,0,7);g.fill();
+   g.fillStyle='rgba(255,255,255,.5)';g.beginPath();g.ellipse(w/2-130,330,70,30,-.5,0,7);g.fill();
+   g.fillStyle='#FFE680';for(let i=0;i<5;i++){g.beginPath();g.arc(w/2-200+i*100,1000,26,0,7);g.fill()}
+ }},
+ {name:'BG_forest_night.jpg',fmt:'JPG',size:'1.1 MB',w:1920,h:1080,extra:'RGB',draw:(g,w,h)=>{
+   let gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#0E1A3D');gr.addColorStop(.6,'#2C4A8C');gr.addColorStop(1,'#6E5A9C');g.fillStyle=gr;g.fillRect(0,0,w,h);
+   g.fillStyle='#FFF4C8';g.beginPath();g.arc(1450,260,90,0,7);g.fill();
+   [['#22305E',520],['#18244A',700],['#0E1730',860]].forEach(([c,y],k)=>{g.fillStyle=c;g.beginPath();g.moveTo(0,h);
+     for(let x=0;x<=w;x+=60){g.lineTo(x,y-Math.abs(Math.sin(x*.004+k*2))*220-((x/60)%2)*40)}g.lineTo(w,h);g.fill()});
+ }},
+ {name:'fx_coin_spin.gif',fmt:'GIF',size:'486 KB',w:640,h:640,extra:'24 frame · động',anim:true,draw:(g,w,h,t)=>{
+   g.clearRect(0,0,w,h);const s=Math.abs(Math.cos(t*2.5));
+   g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(w/2,560,180*Math.max(s,.25),26,0,0,7);g.fill();
+   const y=300-Math.abs(Math.sin(t*2.5))*60;
+   g.fillStyle='#A3161A';g.beginPath();g.ellipse(w/2,y+18,200*Math.max(s,.06),200,0,0,7);g.fill();
+   const gr=g.createRadialGradient(w/2-60,y-70,10,w/2,y,220);gr.addColorStop(0,'#FFE680');gr.addColorStop(1,'#E8930A');
+   g.fillStyle=gr;g.beginPath();g.ellipse(w/2,y,200*Math.max(s,.06),200,0,0,7);g.fill();
+   g.fillStyle='#E5383B';g.fillRect(w/2-60*s,y-14,120*s,28);g.fillRect(w/2-14*s,y-60,28*s,120);
+ }},
+ {name:'app_icon.ico',fmt:'ICO',size:'92 KB',w:256,h:256,extra:'16·32·48·256',draw:(g,w,h)=>{
+   g.clearRect(0,0,w,h);g.fillStyle='#0F2E78';g.beginPath();g.roundRect(16,40,224,190,30);g.fill();
+   const gr=g.createLinearGradient(0,20,0,210);gr.addColorStop(0,'#5AB0FF');gr.addColorStop(1,'#1747B8');g.fillStyle=gr;g.beginPath();g.roundRect(16,22,224,190,30);g.fill();
+   g.fillStyle='#22C3A6';g.beginPath();g.moveTo(16,170);g.lineTo(90,96);g.lineTo(146,152);g.lineTo(178,120);g.lineTo(240,182);g.lineTo(240,190);g.quadraticCurveTo(240,212,210,212);g.lineTo(46,212);g.quadraticCurveTo(16,212,16,182);g.fill();
+   g.fillStyle='#E5383B';g.beginPath();g.arc(180,76,28,0,7);g.fill();
+ }},
+];
+let cur=0,canvas=null,iw=0,ih=0,scale=1,tx=0,ty=0,mode='fit',raf=0;
+
+function fitScale(){const r=stage.getBoundingClientRect();return Math.min((r.width-24)/iw,(r.height-24)/ih,1)}
+function center(){const r=stage.getBoundingClientRect();tx=(r.width-iw*scale)/2;ty=(r.height-ih*scale)/2}
+function clampPan(){const r=stage.getBoundingClientRect(),W=iw*scale,H=ih*scale;
+  tx=W<=r.width?(r.width-W)/2:Math.min(0,Math.max(r.width-W,tx));ty=H<=r.height?(r.height-H)/2:Math.min(0,Math.max(r.height-H,ty))}
+function apply(anim){wrap.classList.toggle('anim',!!anim);wrap.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;
+  wrap.style.setProperty('--ck',(16/scale)+'px');wrap.classList.toggle('pixel',scale>=2);
+  const r=stage.getBoundingClientRect();stage.classList.toggle('pan',iw*scale>r.width+1||ih*scale>r.height+1);
+  $('#zVal').textContent=Math.round(scale*100)+'%';$('#ztip').textContent=Math.round(scale*100)+'%';
+  const s=samples[cur];$('#fmeta').innerHTML=`<span><b>${s.w} × ${s.h}</b></span><span class="tag">${s.fmt}</span><span>${s.extra}</span><span>${s.size}</span><span>Zoom <b>${Math.round(scale*100)}%</b></span>`}
+function flashZoom(){const t=$('#ztip');t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),500)}
+function load(i){cur=(i+samples.length)%samples.length;const s=samples[cur];cancelAnimationFrame(raf);
+  canvas=mk(s.w,s.h,s.draw);iw=s.w;ih=s.h;wrap.replaceChildren(canvas);
+  if(s.anim){const g=canvas.getContext('2d'),t0=performance.now();(function f(n){s.draw(g,s.w,s.h,(n-t0)/1000);raf=requestAnimationFrame(f)})(t0)}
+  $('#fname').textContent=s.name;$('#fidx').textContent=(cur+1)+' / '+samples.length;
+  $('#fpath').textContent='D:\\Projects\\Slot_Dragon\\Art\\Concept\\'+s.name;
+  mode='fit';scale=fitScale();center();apply(false)}
+function zoomAt(f,cx,cy){const r=stage.getBoundingClientRect();if(cx==null){cx=r.width/2;cy=r.height/2}
+  const ns=Math.min(32,Math.max(.02,scale*f));tx=cx-(cx-tx)*ns/scale;ty=cy-(cy-ty)*ns/scale;scale=ns;mode='free';clampPan();apply(true);flashZoom()}
+function toggle11(){if(mode==='one'){mode='fit';scale=fitScale();center()}else{mode='one';scale=1;center()}clampPan();apply(true);flashZoom()}
+function setBg(c){bg=c;stage.style.setProperty('--bg',c);$('#bgDot').style.background=c}
+function setAlpha(v){alpha=v;wrap.classList.toggle('checker',v);$('#bAlpha').classList.toggle('on',v)}
+
+$('#zIn').onclick=()=>zoomAt(1.25);$('#zOut').onclick=()=>zoomAt(1/1.25);$('#zVal').onclick=toggle11;
+$('#navL').onclick=()=>load(cur-1);$('#navR').onclick=()=>load(cur+1);
+$('#bAlpha').onclick=()=>setAlpha(!alpha);
+$('#bBg').onclick=()=>setBg(BGS[(BGS.indexOf(bg)+1)%BGS.length]);
+$('#bSet').onclick=()=>openSettings();
+$('#bUpd').onclick=e=>{const b=e.currentTarget;b.animate([{transform:'rotate(0)'},{transform:'rotate(360deg)'}],{duration:700,easing:'ease-in-out'});
+  setTimeout(()=>{b.classList.add('latestok');b.title='Kiểm tra cập nhật · Đã là bản mới nhất';$('#latest').hidden=false},720)};
+
+stage.addEventListener('wheel',e=>{e.preventDefault();const r=stage.getBoundingClientRect();zoomAt(e.deltaY<0?1.15:1/1.15,e.clientX-r.left,e.clientY-r.top)},{passive:false});
+let drag=null;
+stage.addEventListener('pointerdown',e=>{
+  if(e.button===1){e.preventDefault();toggleFs();return}
+  if(e.button!==0||e.target.closest('.nav'))return;closeCtx();
+  drag={x:e.clientX,y:e.clientY,tx,ty};stage.setPointerCapture(e.pointerId);stage.classList.add('grabbing')});
+stage.addEventListener('pointermove',e=>{if(!drag)return;tx=drag.tx+e.clientX-drag.x;ty=drag.ty+e.clientY-drag.y;clampPan();apply(false)});
+stage.addEventListener('pointerup',()=>{drag=null;stage.classList.remove('grabbing')});
+stage.addEventListener('auxclick',e=>e.preventDefault());
+stage.addEventListener('contextmenu',e=>{e.preventDefault();const r=win.getBoundingClientRect();openCtx(e.clientX-r.left,e.clientY-r.top)});
+
+function toggleFs(force){const on=force!=null?force:!win.classList.contains('fs');win.classList.toggle('fs',on);
+  win.querySelector('.fshint')?.remove();if(on){const h=document.createElement('div');h.className='fshint';h.textContent='Toàn màn hình · chuột giữa hoặc Esc để thoát';stage.append(h)}
+  requestAnimationFrame(()=>{if(mode==='fit')scale=fitScale();center();clampPan();apply(false)})}
+
+/* ---- context menu ---- */
+const I={folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+ link:'<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',win:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M12 13v4M10 15h4"/>',
+ fit:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',one:'<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M10 9l2-1v8"/>',grid:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/>',
+ fs:'<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>',rot:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>',
+ ps:'<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/>',trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',def:'<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>'};
+const ic=k=>`<svg viewBox="0 0 24 24">${I[k]}</svg>`;
+let ctxEl=null;
+function closeCtx(){ctxEl?.remove();ctxEl=null}
+function openCtx(x,y){closeCtx();ctxEl=document.createElement('div');ctxEl.className='ctx';
+  ctxEl.innerHTML=`
+  <div class="it" data-a="fit">${ic('fit')}Vừa khung<span class="k">Ctrl+0</span></div>
+  <div class="it" data-a="one">${ic('one')}Kích thước thật 1:1<span class="k">Ctrl+0</span></div>
+  <div class="it" data-a="fs">${ic('fs')}Toàn màn hình<span class="k">Chuột giữa</span></div>
+  <div class="it" data-a="rot">${ic('rot')}Xoay 90°<span class="k">R</span></div>
+  <hr>
+  <div class="it" data-a="alpha">${ic('grid')}${alpha?'Tắt':'Bật'} nền caro (alpha)<span class="k">A</span></div>
+  <div class="sw">${BGS.map(c=>`<i style="background:${c}" data-c="${c}" class="${c===bg?'on':''}" title="Màu nền ${c}"></i>`).join('')}</div>
+  <hr>
+  <div class="it">${ic('copy')}Sao chép ảnh<span class="k">Ctrl+C</span></div>
+  <div class="it">${ic('link')}Sao chép đường dẫn<span class="k">Ctrl+Shift+C</span></div>
+  <div class="it">${ic('folder')}Mở thư mục chứa ảnh<span class="k">Ctrl+E</span></div>
+  <div class="it">${ic('win')}Mở trong cửa sổ mới<span class="k">Ctrl+N</span></div>
+  <div class="it">${ic('ps')}Mở bằng Photoshop</div>
+  <hr>
+  <div class="it">${ic('trash')}Chuyển vào thùng rác<span class="k">Del</span></div>`;
+  win.append(ctxEl);const r=win.getBoundingClientRect(),m=ctxEl.getBoundingClientRect();
+  ctxEl.style.left=Math.max(6,Math.min(x,r.width-m.width-6))+'px';ctxEl.style.top=Math.max(6,Math.min(y,r.height-m.height-6))+'px';
+  ctxEl.onclick=e=>{const c=e.target.closest('[data-c]');if(c){setBg(c.dataset.c);ctxEl.querySelectorAll('.sw i').forEach(i=>i.classList.toggle('on',i===c));return}
+    const a=e.target.closest('[data-a]')?.dataset.a;
+    if(a==='fit'){mode='one';toggle11()}else if(a==='one'){mode='fit';toggle11()}else if(a==='fs')toggleFs(true);else if(a==='alpha')setAlpha(!alpha);
+    closeCtx()}}
+document.addEventListener('pointerdown',e=>{if(ctxEl&&!ctxEl.contains(e.target))closeCtx()});
+
+/* ---- settings ---- */
+function openSettings(){closeSettings();const v=document.createElement('div');v.className='veil';v.id='veil';
+  const F=['PNG','JPG / JPEG','GIF','WEBP','ICO','BMP','PSD','PSB','TGA','TIFF'];
+  v.innerHTML=`<div class="dlg" role="dialog" aria-label="Cài đặt">
+   <header>Cài đặt<button class="ibtn" data-x title="Đóng (Esc)" aria-label="Đóng"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+   <section><h4>Ứng dụng mặc định</h4>
+     <div class="fmts">${F.map((f,i)=>`<label><input type="checkbox" id="fmt${i}" ${i<8?'checked':''}>${f}</label>`).join('')}</div>
+     <div class="row"><span class="grow note">Windows 10 chỉ cho đổi app mặc định trong Cài đặt của Windows. Bấm nút bên phải, chọn Mon View cho từng định dạng.</span>
+       <button class="btn-main">Đặt làm mặc định…</button></div></section>
+   <section><h4>Khung xem</h4>
+     <div class="row"><span class="grow">Màu nền ngoài ảnh</span><div class="sw">${BGS.map(c=>`<i style="background:${c}" class="${c===bg?'on':''}" data-c="${c}"></i>`).join('')}</div><input type="color" id="bgPick" value="${bg}" title="Chọn màu khác"></div>
+     <label class="row"><input type="checkbox" id="optA" ${alpha?'checked':''}><span class="grow" style="color:var(--text)">Hiện nền caro cho ảnh có alpha</span></label>
+     <label class="row"><input type="checkbox" id="optUp"><span class="grow" style="color:var(--text)">Phóng to ảnh nhỏ cho vừa khung khi Fit</span></label>
+     <label class="row"><input type="checkbox" id="optSm" checked><span class="grow" style="color:var(--text)">Làm mượt ảnh khi zoom (tắt ở zoom ≥ 200% để thấy pixel)</span></label></section>
+   <section><h4>Phiên bản</h4>
+     <div class="row"><span class="grow">Mon View v1.0.0</span>
+       <button class="btn2"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4zM19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>What's new</button>
+       <button class="btn2"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-15-6.7L3 8M3 3v5h5M3 12a9 9 0 0 0 15 6.7l3-2.7M21 21v-5h-5"/></svg>Kiểm tra cập nhật</button></div></section>
+  </div>`;
+  win.append(v);
+  v.onclick=e=>{if(e.target===v||e.target.closest('[data-x]'))closeSettings();const c=e.target.closest('[data-c]');if(c){setBg(c.dataset.c);v.querySelectorAll('.sw i').forEach(i=>i.classList.toggle('on',i===c));v.querySelector('#bgPick').value=c.dataset.c}};
+  v.querySelector('#bgPick').oninput=e=>setBg(e.target.value);
+  v.querySelector('#optA').onchange=e=>setAlpha(e.target.checked)}
+function closeSettings(){$('#veil')?.remove()}
+
+/* ---- empty / drop ---- */
+function showEmpty(on,drop){stage.querySelector('.empty')?.remove();stage.querySelector('.drop')?.remove();
+  wrap.hidden=on;stage.querySelectorAll('.nav').forEach(n=>n.hidden=on);
+  $('.file-info').style.visibility=on?'hidden':'';$('#fpath').textContent=on?'Chưa mở ảnh':$('#fpath').textContent;$('#fmeta').style.visibility=on?'hidden':'';
+  if(on){const d=document.createElement('div');d.className='empty';d.innerHTML=`<h2>Chưa mở ảnh nào</h2><p>Kéo thả ảnh vào đây, hoặc double click ảnh trong Explorer</p>
+   <button class="btn-main">Mở ảnh (Ctrl+O)</button>
+   <div class="keys"><span><kbd>←</kbd> <kbd>→</kbd></span><span>Ảnh trước / sau</span><span><kbd>+</kbd> <kbd>−</kbd></span><span>Zoom</span><span><kbd>Ctrl</kbd>+<kbd>0</kbd></span><span>1:1 ⇄ Fit</span><span><kbd>Chuột giữa</kbd></span><span>Toàn màn hình</span></div>
+   <p style="font-size:12px;margin-top:6px">PNG · JPG · GIF · WEBP · ICO · BMP · PSD · PSB</p>`;stage.append(d);
+   if(drop){const x=document.createElement('div');x.className='drop';x.textContent='Thả để mở';stage.append(x)}}}
+
+/* ---- phím ---- */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if($('#veil'))closeSettings();else if(ctxEl)closeCtx();else if(win.classList.contains('fs'))toggleFs(false);return}
+  if($('#veil')||wrap.hidden)return;
+  if(e.ctrlKey&&(e.key==='0'||e.code==='Digit0'||e.code==='Numpad0')){e.preventDefault();toggle11();return}
+  if(e.key==='+'||e.key==='='||e.code==='NumpadAdd'){e.preventDefault();zoomAt(1.25)}
+  else if(e.key==='-'||e.code==='NumpadSubtract'){e.preventDefault();zoomAt(1/1.25)}
+  else if(e.key==='ArrowRight'){e.preventDefault();load(cur+1)}
+  else if(e.key==='ArrowLeft'){e.preventDefault();load(cur-1)}
+  else if(e.key==='a'||e.key==='A')setAlpha(!alpha);
+  else if(e.key==='b'||e.key==='B')setBg(BGS[(BGS.indexOf(bg)+1)%BGS.length]);
+});
+new ResizeObserver(()=>{if(!canvas)return;if(mode==='fit')scale=fitScale();clampPan();if(mode==='fit')center();apply(false)}).observe(stage);
+
+/* ---- nút trạng thái demo ---- */
+document.querySelectorAll('.demo button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.demo button').forEach(x=>x.classList.toggle('on',x===b));
+  closeCtx();closeSettings();toggleFs(false);showEmpty(false);
+  const st=b.dataset.st;
+  if(st==='empty')showEmpty(true);else if(st==='drop')showEmpty(true,true);
+  else if(st==='fs')toggleFs(true);
+  else if(st==='ctx'){const r=stage.getBoundingClientRect(),w=win.getBoundingClientRect();openCtx(r.left-w.left+r.width*.58,r.top-w.top+r.height*.25)}
+  else if(st==='set')openSettings();
+  if(st==='view'||st==='fs'||st==='ctx'){load(cur)}
+});
+
+setBg(bg);setAlpha(true);load(0);
+</script>
