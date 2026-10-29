@@ -244,6 +244,22 @@ ipcMain.handle('assoc-pick', async (_e, ext) => {
 });
 ipcMain.handle('open-default-apps', () => shell.openExternal('ms-settings:defaultapps'));
 
+// Đặt mặc định trực tiếp (không cần hộp thoại "Open with") bằng Set-FTA của PS-SFTA
+const PROGID = { jpeg: 'jpg', jfif: 'jpg', tiff: 'tif' };
+ipcMain.handle('assoc-set', (_e, exts) => new Promise(resolve => {
+  if (process.platform !== 'win32') return resolve({ ok: [], failed: exts });
+  const list = exts.includes('jpg') && !exts.includes('jfif') && exts.length > 1 ? [...exts, 'jfif'] : exts;
+  const pairs = list.map(e => `MonView.${PROGID[e] || e}=.${e}`).join(';');
+  // PowerShell không đọc được file trong app.asar, script nằm ở app.asar.unpacked
+  const script = path.join(__dirname, 'set-default.ps1').replace(/app\.asar([\\/])/, 'app.asar.unpacked$1');
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-Pairs', pairs],
+    { windowsHide: true, timeout: 90000 }, (err, out) => {
+      const ok = [], failed = [];
+      for (const e of exts) (new RegExp(`^OK \\.${e}\\s*$`, 'm').test(out || '') ? ok : failed).push(e);
+      resolve({ ok, failed, error: err ? String(err.message || err) : '' });
+    });
+}));
+
 // ---- Tự cập nhật (GitHub Releases) ----
 let updater = null, updState = { state: 'idle' };
 function sendUpd(s) { updState = s; BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-state', s)); }

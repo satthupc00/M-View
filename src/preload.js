@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('mv', {
   whatsNew: () => call('whatsnew'),
   assocStatus: () => call('assoc-status'),
   assocPick: ext => call('assoc-pick', ext),
+  assocSet: exts => call('assoc-set', exts),
   openDefaultApps: () => call('open-default-apps'),
   updateCheck: () => call('update-check'),
   updateState: () => call('update-state'),

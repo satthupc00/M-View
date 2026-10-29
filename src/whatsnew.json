@@ -1,9 +1,10 @@
 {
-  "version": "1.0.3",
-  "date": "2026-10-28",
-  "new": [],
-  "improved": [
-    "Icon theo loại file trong Explorer đổi sang dạng chữ vàng trên nền tối (PNG, JPG, PSD…), đọc rõ cả ở cỡ nhỏ"
+  "version": "1.0.4",
+  "date": "2026-10-29",
+  "new": [
+    "Cài đặt → Ứng dụng mặc định: bấm \"Đặt mặc định tất cả\" để Mon View mở mọi định dạng ảnh, không cần qua hộp thoại của Windows",
+    "Bấm vào từng định dạng (PNG, PSD…) để đặt riêng định dạng đó"
   ],
+  "improved": [],
   "fixed": []
 }

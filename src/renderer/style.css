@@ -135,6 +135,10 @@ body.fs .top,body.fs .status{display:none}
 .fmt .st{font-size:11px;color:var(--muted)}
 .fmt.ok{background:rgba(61,220,138,.08);border-color:rgba(61,220,138,.4)}
 .fmt.ok .st{color:var(--ok)}
+.fmt.ok{cursor:default}
+.fmt.busy .st{color:var(--warn)}
+.fmt.busy{pointer-events:none;animation:busy 1s ease-in-out infinite}
+@keyframes busy{50%{opacity:.55}}
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .row .grow{flex:1;min-width:0}
 .muted{color:var(--muted)}

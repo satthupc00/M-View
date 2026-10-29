@@ -1,7 +1,7 @@
 {
   "name": "mon-view",
   "productName": "Mon View",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Mon View - xem ảnh nhanh",
   "author": "Mondiro",
   "license": "UNLICENSED",
@@ -159,6 +159,10 @@
         "repo": "M-View",
         "releaseType": "release"
       }
+    ],
+    "asarUnpack": [
+      "src/set-default.ps1",
+      "src/vendor/**"
     ]
   }
 }

@@ -337,9 +337,10 @@ function openSettings() {
   const v = openDialogEl(`
     <header>Cài đặt${closeBtn}</header>
     <section><h4>Ứng dụng mặc định</h4>
-      <div class="fmts" id="fmts">${ASSOC.map(([e, n]) => `<button class="fmt" data-ext="${e}" title="Chọn Mon View để mở file .${e}"><b>${n}</b><span class="st">…</span></button>`).join('')}</div>
-      <div class="row"><span class="grow note">Windows chỉ cho bạn tự chọn app mặc định. Bấm vào một định dạng, chọn <b>Mon View</b>, tích "Always use this app" rồi bấm OK.</span>
-        <button class="btn2" id="sDefApps">Mở Default apps của Windows</button></div>
+      <div class="fmts" id="fmts">${ASSOC.map(([e, n]) => `<button class="fmt" data-ext="${e}" title="Đặt Mon View làm app mặc định cho file .${e}"><b>${n}</b><span class="st">…</span></button>`).join('')}</div>
+      <div class="row"><span class="grow note">Bấm vào một định dạng để đặt Mon View làm app mặc định, hoặc đặt cho tất cả cùng lúc.</span>
+        <button class="btn2" id="sDefApps" title="Mở trang Default apps của Windows">Default apps</button>
+        <button class="btn-main" id="sDefAll">Đặt mặc định tất cả</button></div>
     </section>
     <section><h4>Khung xem</h4>
       <div class="row"><span class="grow">Màu nền ngoài ảnh</span><div class="sw" id="sSw">${BGS.map(c => `<i style="background:${c}" class="${c === S.bg ? 'on' : ''}" data-c="${c}" title="${c}"></i>`).join('')}</div><input type="color" id="sPick" value="${S.bg}" title="Chọn màu khác"></div>
@@ -354,7 +355,8 @@ function openSettings() {
     </section>`, (e, v) => {
     const c = e.target.closest('[data-c]');
     if (c) { setBg(c.dataset.c); v.querySelectorAll('#sSw i').forEach(i => i.classList.toggle('on', i === c)); v.querySelector('#sPick').value = c.dataset.c; return; }
-    const fmt = e.target.closest('.fmt'); if (fmt) { mv.assocPick(fmt.dataset.ext); return; }
+    const fmt = e.target.closest('.fmt'); if (fmt) { if (!fmt.classList.contains('ok')) setDefault([fmt.dataset.ext]); return; }
+    if (e.target.closest('#sDefAll')) { setDefault(ASSOC.map(a => a[0])); return; }
     if (e.target.closest('#sDefApps')) mv.openDefaultApps();
     if (e.target.closest('#sNew')) openWhatsNew();
     if (e.target.closest('#sUpd')) mv.updateCheck();
@@ -365,13 +367,29 @@ function openSettings() {
   v.querySelector('#sPix').onchange = e => { S.pixel = e.target.checked; mv.setSettings({ pixel: S.pixel }); apply(false); };
   refreshAssoc();
 }
+let assocBusy = false;
+async function setDefault(exts) {
+  if (assocBusy) return;
+  assocBusy = true;
+  const box = $('#fmts'), all = $('#sDefAll');
+  box?.querySelectorAll('.fmt').forEach(b => { if (exts.includes(b.dataset.ext)) { b.classList.add('busy'); b.querySelector('.st').textContent = 'Đang đặt…'; } });
+  if (all) all.disabled = true;
+  const r = await mv.assocSet(exts).catch(() => ({ ok: [], failed: exts }));
+  assocBusy = false;
+  if (all) all.disabled = false;
+  box?.querySelectorAll('.fmt.busy').forEach(b => b.classList.remove('busy'));
+  await refreshAssoc();
+  if (!r.failed.length) toast(exts.length > 1 ? 'Đã đặt Mon View làm app mặc định cho mọi định dạng ảnh' : `Đã đặt Mon View mở file .${exts[0]}`);
+  else if (exts.length === 1) { toast('Windows không cho đặt tự động, hãy chọn Mon View trong hộp thoại'); mv.assocPick(exts[0]); }
+  else toast(`Chưa đặt được: ${r.failed.map(e => e.toUpperCase()).join(', ')}. Bấm vào từng định dạng để thử lại`);
+}
 async function refreshAssoc() {
   const box = $('#fmts'); if (!box) return;
   const st = await mv.assocStatus().catch(() => ({}));
   box.querySelectorAll('.fmt').forEach(b => {
     const ok = !!st[b.dataset.ext];
     b.classList.toggle('ok', ok);
-    b.querySelector('.st').textContent = ok ? '✓ Mon View' : 'Chọn';
+    if (!b.classList.contains('busy')) b.querySelector('.st').textContent = ok ? '✓ Mon View' : 'Đặt';
   });
 }
 window.addEventListener('focus', refreshAssoc);
