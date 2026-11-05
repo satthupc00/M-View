@@ -9,10 +9,11 @@ Trình xem ảnh nhanh cho Windows: PNG, JPG, GIF (cả GIF động), WEBP, ICO,
 | Ảnh trước / sau | ← → hoặc lăn chuột |
 | Zoom | + − hoặc Ctrl + lăn chuột |
 | 1:1 ⇄ vừa khung | Ctrl+0 hoặc double click |
+| Vừa khung | Ctrl + chuột phải |
 | Toàn màn hình | Chuột giữa (Esc để thoát) |
 | Menu lệnh | Chuột phải |
 | Nền caro / đổi màu nền | A / B |
-| Xoay | R / Shift+R |
+| Xoay 90° | Ctrl+← / Ctrl+→ (hoặc R / Shift+R) |
 | Mở cửa sổ mới | Chuột phải file trong Explorer → "Mở bằng Mon View (cửa sổ mới)", hoặc Ctrl+N |
 
 Created by Mondiro

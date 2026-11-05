@@ -1,10 +1,13 @@
 {
-  "version": "1.0.4",
-  "date": "2026-10-29",
+  "version": "1.0.5",
+  "date": "2026-11-05",
   "new": [
-    "Cài đặt → Ứng dụng mặc định: bấm \"Đặt mặc định tất cả\" để Mon View mở mọi định dạng ảnh, không cần qua hộp thoại của Windows",
-    "Bấm vào từng định dạng (PNG, PSD…) để đặt riêng định dạng đó"
+    "Ctrl + mũi tên trái/phải để xoay ảnh 90°",
+    "Ctrl + chuột phải để đưa ảnh về vừa khung"
   ],
-  "improved": [],
+  "improved": [
+    "Zoom in/out có animation mượt, cả khi bấm +/− lẫn Ctrl + lăn chuột",
+    "Ảnh xoay có animation thay vì nhảy ngay"
+  ],
   "fixed": []
 }

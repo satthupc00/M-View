@@ -49,7 +49,7 @@ kbd{font:600 11px/1 "Segoe UI",system-ui;background:var(--panel);border:1px soli
 .stage{flex:1;position:relative;overflow:hidden;background:var(--bg,var(--stage))}
 .stage.pan{cursor:grab} .stage.pan.grabbing{cursor:grabbing}
 .imgwrap{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
-.imgwrap.anim{transition:transform var(--t-med) var(--ease-out)}
+.imgwrap>.rotating{transition:transform .28s var(--ease-out)}
 .imgwrap.checker{background-color:#fff;background-image:linear-gradient(45deg,#CCCFD4 25%,transparent 25%,transparent 75%,#CCCFD4 75%),linear-gradient(45deg,#CCCFD4 25%,transparent 25%,transparent 75%,#CCCFD4 75%);
   background-size:var(--ck) var(--ck);background-position:0 0,calc(var(--ck)/2) calc(var(--ck)/2)}
 .imgwrap>*{position:absolute;display:block;transform-origin:50% 50%;max-width:none}
