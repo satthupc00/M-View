@@ -1,13 +1,13 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "date": "2026-11-05",
   "new": [
-    "Ctrl + mũi tên trái/phải để xoay ảnh 90°",
-    "Ctrl + chuột phải để đưa ảnh về vừa khung"
+    "Giữ chuột trái + bấm chuột phải để phóng ảnh vừa khung app (cả ảnh nhỏ cũng phóng to cho đầy khung)",
+    "Thanh dưới cùng có 2 nút xoay ảnh trái/phải 90°",
+    "Menu chuột phải có thêm lệnh \"Phóng vừa khung app\""
   ],
   "improved": [
-    "Zoom in/out có animation mượt, cả khi bấm +/− lẫn Ctrl + lăn chuột",
-    "Ảnh xoay có animation thay vì nhảy ngay"
+    "Ctrl + chuột phải trở lại mở menu như bình thường"
   ],
   "fixed": []
 }

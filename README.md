@@ -9,7 +9,7 @@ Trình xem ảnh nhanh cho Windows: PNG, JPG, GIF (cả GIF động), WEBP, ICO,
 | Ảnh trước / sau | ← → hoặc lăn chuột |
 | Zoom | + − hoặc Ctrl + lăn chuột |
 | 1:1 ⇄ vừa khung | Ctrl+0 hoặc double click |
-| Vừa khung | Ctrl + chuột phải |
+| Phóng ảnh vừa khung app | Giữ chuột trái + bấm chuột phải |
 | Toàn màn hình | Chuột giữa (Esc để thoát) |
 | Menu lệnh | Chuột phải |
 | Nền caro / đổi màu nền | A / B |

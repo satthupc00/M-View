@@ -27,7 +27,8 @@ function toast(msg) {
 /* ---------- hiển thị ---------- */
 const effW = () => (rot % 180 ? ih : iw), effH = () => (rot % 180 ? iw : ih);
 function stageSize() { const r = stage.getBoundingClientRect(); return { w: r.width, h: r.height }; }
-function fitScale() { const { w, h } = stageSize(); return Math.min(w / effW(), h / effH(), S.upscale ? Infinity : 1); }
+// fill = true: luôn phóng ảnh cho vừa khung app, kể cả ảnh nhỏ (giữ chuột trái + bấm chuột phải)
+function fitScale(fill) { const { w, h } = stageSize(); return Math.min(w / effW(), h / effH(), fill || S.upscale ? Infinity : 1); }
 function center() { const { w, h } = stageSize(); tx = (w - effW() * scale) / 2; ty = (h - effH() * scale) / 2; }
 function clampPan() {
   const { w, h } = stageSize(), W = effW() * scale, H = effH() * scale;
@@ -64,7 +65,8 @@ function apply(anim) {
   renderMeta();
 }
 function flashZoom() { const t = $('#ztip'); t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 280); }
-function setFit(anim) { mode = 'fit'; scale = fitScale(); center(); apply(anim); }
+function setFit(anim, fill) { mode = fill ? 'fill' : 'fit'; scale = fitScale(fill); center(); apply(anim); }
+const refit = anim => setFit(anim, mode === 'fill');
 function zoomAt(f, cx, cy, anim) {
   if (!el) return;
   const { w, h } = stageSize(); if (cx == null) { cx = w / 2; cy = h / 2; }
@@ -89,7 +91,7 @@ function rotate(d) {
   layoutEl();
   // giữ tâm ảnh đứng yên khi khung đổi chiều, rồi trượt mượt tới vị trí mới
   dx -= ds * (effW() - ow) / 2; dy -= ds * (effH() - oh) / 2; draw();
-  if (mode === 'fit') setFit(true); else { center(); clampPan(); apply(true); }
+  if (mode === 'fit' || mode === 'fill') refit(true); else { center(); clampPan(); apply(true); }
 }
 
 function renderMeta() {
@@ -115,7 +117,7 @@ function renderHeader() {
   $('#fpath').textContent = has ? file : 'Chưa mở ảnh';
   $('#fpath').title = has ? file : '';
   stage.classList.toggle('single', list.length < 2);
-  ['#zOut', '#zIn', '#zVal'].forEach(s => { $(s).disabled = !el; });
+  ['#zOut', '#zIn', '#zVal', '#bRotL', '#bRotR'].forEach(s => { $(s).disabled = !el; });
   if (!el) $('#zVal').textContent = '–';
 }
 function showMsg(title, sub) {
@@ -233,16 +235,23 @@ stage.addEventListener('pointermove', e => {
   if (!drag) return;
   if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 3) drag.moved = true;
   tx = drag.tx + e.clientX - drag.x; ty = drag.ty + e.clientY - drag.y; clampPan(); apply(false);
-  if (mode === 'fit' && drag.moved) mode = 'free';
+  if ((mode === 'fit' || mode === 'fill') && drag.moved) mode = 'free';
 });
 const endDrag = () => { drag = null; stage.classList.remove('grabbing'); };
 stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
 stage.addEventListener('dblclick', e => { if (e.target.closest('.nav,.updcard,.empty')) return; const r = stage.getBoundingClientRect(); toggle11(e.clientX - r.left, e.clientY - r.top); });
 stage.addEventListener('auxclick', e => e.preventDefault());
+// Giữ chuột trái + bấm chuột phải: phóng ảnh vừa khung app
+let skipCtx = false;
+stage.addEventListener('mousedown', e => {
+  if (e.button !== 2 || !(e.buttons & 1)) return;
+  e.preventDefault(); skipCtx = true; endDrag(); closeCtx();
+  if (el) { setFit(true, true); flashZoom(); }
+});
 document.addEventListener('contextmenu', e => {
   e.preventDefault();
   if (e.target.closest('.top,.dlg')) return;
-  if (e.ctrlKey) { closeCtx(); if (el) { setFit(true); flashZoom(); } return; } // Ctrl + chuột phải: vừa khung
+  if (skipCtx) { skipCtx = false; return; }
   openCtx(e.clientX, e.clientY);
 });
 
@@ -250,6 +259,8 @@ $('#navL').onclick = () => nav(-1); $('#navR').onclick = () => nav(1);
 $('#zIn').onclick = () => zoomAt(1.25, null, null, true);
 $('#zOut').onclick = () => zoomAt(1 / 1.25, null, null, true);
 $('#zVal').onclick = () => toggle11();
+$('#bRotL').onclick = () => rotate(-90);
+$('#bRotR').onclick = () => rotate(90);
 $('#bAlpha').onclick = () => setAlpha(!S.alpha);
 $('#bBg').onclick = cycleBg;
 $('#bSet').onclick = () => openSettings();
@@ -272,7 +283,7 @@ mv.onFullscreen(on => {
   stage.querySelector('.fshint')?.remove();
   if (on) { const h = document.createElement('div'); h.className = 'fshint'; h.textContent = 'Toàn màn hình · chuột giữa hoặc Esc để thoát'; stage.append(h); }
 });
-new ResizeObserver(() => { if (!el) return; if (mode === 'fit') setFit(false); else { clampPan(); apply(false); } }).observe(stage);
+new ResizeObserver(() => { if (!el) return; if (mode === 'fit' || mode === 'fill') refit(false); else { clampPan(); apply(false); } }).observe(stage);
 
 /* ---------- menu chuột phải ---------- */
 const IC = {
@@ -300,7 +311,8 @@ function openCtx(x, y) {
   ctxEl.innerHTML = [
     it('open', 'open', 'Mở ảnh…', 'Ctrl+O'),
     '<hr>',
-    mode === 'one' ? it('fit', 'fit', 'Vừa khung', 'Ctrl+chuột phải', has) : it('one', 'one', 'Kích thước thật 1:1', 'Ctrl+0', has),
+    mode === 'one' ? it('fit', 'fit', 'Vừa khung', 'Ctrl+0', has) : it('one', 'one', 'Kích thước thật 1:1', 'Ctrl+0', has),
+    it('fill', 'fit', 'Phóng vừa khung app', 'Giữ trái + phải', has),
     it('fs', 'fs', document.body.classList.contains('fs') ? 'Thoát toàn màn hình' : 'Toàn màn hình', 'Chuột giữa'),
     it('rotr', 'rot', 'Xoay phải 90°', 'Ctrl+→', has),
     it('rotl', 'rotl', 'Xoay trái 90°', 'Ctrl+←', has),
@@ -332,6 +344,7 @@ function run(a) {
   switch (a) {
     case 'open': return openDialog();
     case 'fit': return setFit(true);
+    case 'fill': return setFit(true, true);
     case 'one': mode = 'free'; return toggle11();
     case 'fs': return mv.fullscreen();
     case 'rotr': return rotate(90);

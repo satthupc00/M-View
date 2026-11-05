@@ -95,6 +95,10 @@ kbd{font:600 11px/1 "Segoe UI",system-ui;background:var(--panel);border:1px soli
 .status .path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .status .meta{display:flex;gap:12px;font-variant-numeric:tabular-nums;flex:0 0 auto;align-items:center}
 .status .meta b{color:var(--text);font-weight:600}
+.rotbtns{display:flex;gap:2px;flex:0 0 auto}
+.ibtn.sm{width:24px;height:24px;border-radius:5px;color:var(--muted)}
+.ibtn.sm:hover{color:var(--text)}
+.ibtn.sm svg{width:15px;height:15px}
 .tag{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--text);font-weight:600;font-size:11px}
 .credit{color:#6B707A;font-size:11px;white-space:nowrap}
 
