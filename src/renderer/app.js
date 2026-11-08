@@ -120,10 +120,10 @@ function renderHeader() {
   ['#zOut', '#zIn', '#zVal', '#bRotL', '#bRotR'].forEach(s => { $(s).disabled = !el; });
   if (!el) $('#zVal').textContent = '–';
 }
-function showMsg(title, sub) {
+function showMsg(title, sub, detail) {
   const m = $('#msg');
   if (!title) { m.hidden = true; m.textContent = ''; return; }
-  m.innerHTML = `<b>${esc(title)}</b><span>${esc(sub || '')}</span>`; m.hidden = false;
+  m.innerHTML = `<b>${esc(title)}</b><span>${esc(sub || '')}</span>` + (detail ? `<code class="detail" title="Chi tiết lỗi (chọn để sao chép)">${esc(detail)}</code>` : ''); m.hidden = false;
 }
 
 /* ---------- mở ảnh ---------- */
@@ -166,7 +166,7 @@ async function load(p) {
     const m = String(err && err.message || err);
     if (m.includes('NO_COMPOSITE')) showMsg('File này không lưu ảnh gộp', 'Trong Photoshop bật "Maximize PSD and PSB File Compatibility" rồi lưu lại file.');
     else if (m.includes('ENOENT')) showMsg('Không tìm thấy file', 'File đã bị xoá hoặc đổi tên.');
-    else showMsg('Không mở được ảnh này', baseName(p));
+    else showMsg('Không mở được ảnh này', baseName(p), m.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''));
     renderMeta();
   } finally {
     clearTimeout(ldT);

@@ -1,13 +1,14 @@
 {
-  "version": "1.0.6",
-  "date": "2026-11-05",
+  "version": "1.0.7",
+  "date": "2026-11-08",
   "new": [
-    "Giữ chuột trái + bấm chuột phải để phóng ảnh vừa khung app (cả ảnh nhỏ cũng phóng to cho đầy khung)",
-    "Thanh dưới cùng có 2 nút xoay ảnh trái/phải 90°",
-    "Menu chuột phải có thêm lệnh \"Phóng vừa khung app\""
+    "Mở được PSD/PSB hệ màu Lab, Multichannel và Duotone"
   ],
   "improved": [
-    "Ctrl + chuột phải trở lại mở menu như bình thường"
+    "Bộ đọc PSD/PSB mới: lấy thẳng ảnh gộp, bỏ qua layer, nên file nặng mở nhanh hơn, tốn ít RAM hơn và không còn lỗi vì layer/hiệu ứng lạ",
+    "Khi không mở được ảnh, app hiện thêm dòng chi tiết lỗi (chọn để sao chép)"
   ],
-  "fixed": []
+  "fixed": [
+    "Sửa lỗi một số file PSD không xem được ảnh"
+  ]
 }

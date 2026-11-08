@@ -2,6 +2,7 @@
 const { parentPort } = require('worker_threads');
 const fs = require('fs');
 const path = require('path');
+const { decodeComposite } = require('./psd-composite');
 
 // Chromium giới hạn kích thước canvas, ảnh quá lớn sẽ được thu nhỏ để xem
 const MAX_SIDE = 16384, MAX_AREA = 160e6;
@@ -29,12 +30,20 @@ function countLayers(list) {
 }
 
 function decodePsd(buf) {
-  const { readPsd, initializeCanvas } = require('ag-psd');
-  // không có canvas trong worker: chỉ cần mảng pixel thô
-  initializeCanvas(() => { throw new Error('NO_CANVAS'); }, (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }));
-  const psd = readPsd(buf, { skipLayerImageData: true, skipThumbnail: true, skipLinkedFilesData: true, useImageData: true });
-  if (!psd.imageData) throw new Error('NO_COMPOSITE');
-  return { width: psd.width, height: psd.height, data: psd.imageData.data, layers: countLayers(psd.children) };
+  // 1. Đọc thẳng ảnh gộp, bỏ qua layer: nhanh, ít RAM, không vấp layer/hiệu ứng lạ
+  let first;
+  try { return decodeComposite(buf, { maxSide: MAX_SIDE, maxArea: MAX_AREA }); } catch (e) { first = e; }
+  // 2. Dự phòng: thư viện ag-psd
+  try {
+    const { readPsd, initializeCanvas } = require('ag-psd');
+    // không có canvas trong worker: chỉ cần mảng pixel thô
+    initializeCanvas(() => { throw new Error('NO_CANVAS'); }, (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }));
+    const psd = readPsd(buf, { skipLayerImageData: true, skipThumbnail: true, skipLinkedFilesData: true, useImageData: true });
+    if (!psd.imageData) throw new Error('NO_COMPOSITE');
+    return { width: psd.width, height: psd.height, data: psd.imageData.data, layers: countLayers(psd.children) };
+  } catch (e) {
+    throw new Error(first.message === e.message ? e.message : `${first.message} · ${e.message}`);
+  }
 }
 
 function decodeTiff(buf) {
@@ -105,10 +114,10 @@ parentPort.on('message', ({ id, file }) => {
     else if (ext === 'tif' || ext === 'tiff') r = decodeTiff(buf);
     else if (ext === 'tga') r = decodeTga(buf);
     else throw new Error('UNSUPPORTED');
-    const fullW = r.width, fullH = r.height;
+    const fullW = r.fullW || r.width, fullH = r.fullH || r.height;
     const d = downscale(r.width, r.height, r.data instanceof Uint8ClampedArray ? r.data : new Uint8ClampedArray(r.data.buffer, r.data.byteOffset, r.data.byteLength));
     const data = new Uint8Array(d.data.buffer, d.data.byteOffset, d.data.byteLength);
-    parentPort.postMessage({ id, width: d.width, height: d.height, fullW, fullH, scaled: d.scaled, layers: r.layers, pages: r.pages, data }, [data.buffer]);
+    parentPort.postMessage({ id, width: d.width, height: d.height, fullW, fullH, scaled: d.scaled * (r.scaled || 1), layers: r.layers, pages: r.pages, data }, [data.buffer]);
   } catch (err) {
     parentPort.postMessage({ id, error: String(err && err.message || err) });
   }

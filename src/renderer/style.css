@@ -68,6 +68,7 @@ kbd{font:600 11px/1 "Segoe UI",system-ui;background:var(--panel);border:1px soli
 .loading i{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--red);animation:spin .8s linear infinite}
 .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:20px;color:var(--muted)}
 .msg b{color:var(--text);font-size:16px}
+.msg .detail{margin-top:6px;max-width:80%;font:11px/1.4 Consolas,monospace;color:#6B707A;user-select:text;word-break:break-word}
 .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px}
 .empty h2{margin:0;font-size:20px;font-weight:700}
 .empty p{margin:0;color:var(--muted)}
