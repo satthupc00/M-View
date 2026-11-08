@@ -498,7 +498,9 @@ mv.onUpdateState(s => renderUpd(s, true));
 document.addEventListener('keydown', e => {
   const k = e.key, ctrl = e.ctrlKey || e.metaKey;
   if (k === 'Escape') {
+    // Esc: đóng hộp thoại/menu, thoát toàn màn hình, nếu không còn gì thì tắt cửa sổ
     if ($('.veil')) closeDialog(); else if (ctxEl) closeCtx(); else if (document.body.classList.contains('fs')) mv.fullscreen(false);
+    else mv.closeWindow();
     return;
   }
   if ($('.veil')) return;

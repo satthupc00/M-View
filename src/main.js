@@ -54,6 +54,18 @@ function boundsVisible(b) {
   });
 }
 
+// Đưa cửa sổ lên trước và nhận bàn phím. Windows chặn app tự giành focus,
+// nên bật "luôn trên cùng" trong chốc lát để cửa sổ chắc chắn nổi lên.
+function bringToFront(win) {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.setAlwaysOnTop(true);
+  win.focus(); win.moveTop();
+  win.webContents.focus();
+  setTimeout(() => { if (!win.isDestroyed()) { win.setAlwaysOnTop(false); win.focus(); win.webContents.focus(); } }, 150);
+}
+
 function createWindow(file, { cascade = false } = {}) {
   let b = { width: 1200, height: 800 };
   if (settings.bounds && boundsVisible(settings.bounds)) b = { ...settings.bounds };
@@ -70,7 +82,7 @@ function createWindow(file, { cascade = false } = {}) {
   });
   if (settings.maximized && !from) win.maximize();
   pending.set(win.webContents.id, file || null);
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => bringToFront(win));
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   const remember = () => {
@@ -92,8 +104,7 @@ function openFile(file, newWindow) {
   const target = !newWindow && lastFocused && !lastFocused.isDestroyed() ? lastFocused : null;
   if (target) {
     target.webContents.send('open-file', file);
-    if (target.isMinimized()) target.restore();
-    target.show(); target.focus();
+    bringToFront(target);
   } else createWindow(file, { cascade: !!newWindow });
 }
 
@@ -102,7 +113,7 @@ app.on('second-instance', (_e, argv, cwd, data) => {
   const newWin = (data && data.newWindow) || argv.includes('--new-window');
   if (!files.length) {
     if (newWin || !lastFocused || lastFocused.isDestroyed()) createWindow(null, { cascade: true });
-    else { lastFocused.show(); lastFocused.focus(); }
+    else bringToFront(lastFocused);
     return;
   }
   openFile(files[0], newWin);
@@ -205,6 +216,7 @@ ipcMain.handle('show-in-folder', (_e, f) => shell.showItemInFolder(f));
 ipcMain.handle('open-with', (_e, f) => { execFile('rundll32.exe', ['shell32.dll,OpenAs_RunDLL', f]); });
 ipcMain.handle('trash', async (_e, f) => { await shell.trashItem(f); return true; });
 ipcMain.handle('new-window', (_e, f) => { createWindow(f || null, { cascade: true }); });
+ipcMain.handle('close-window', e => BrowserWindow.fromWebContents(e.sender)?.close());
 ipcMain.handle('fullscreen', (e, on) => { const w = BrowserWindow.fromWebContents(e.sender); w.setFullScreen(on == null ? !w.isFullScreen() : !!on); });
 ipcMain.handle('open-dialog', async e => {
   const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), {

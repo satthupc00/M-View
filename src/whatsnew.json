@@ -1,14 +1,11 @@
 {
-  "version": "1.0.7",
+  "version": "1.0.8",
   "date": "2026-11-08",
   "new": [
-    "Mở được PSD/PSB hệ màu Lab, Multichannel và Duotone"
+    "Bấm Esc để tắt app (nếu đang mở menu, Cài đặt hay toàn màn hình thì Esc đóng cái đó trước)"
   ],
   "improved": [
-    "Bộ đọc PSD/PSB mới: lấy thẳng ảnh gộp, bỏ qua layer, nên file nặng mở nhanh hơn, tốn ít RAM hơn và không còn lỗi vì layer/hiệu ứng lạ",
-    "Khi không mở được ảnh, app hiện thêm dòng chi tiết lỗi (chọn để sao chép)"
+    "Double click ảnh trong Explorer: cửa sổ Mon View tự hiện lên trên cùng và nhận phím ngay, kể cả khi đang thu nhỏ"
   ],
-  "fixed": [
-    "Sửa lỗi một số file PSD không xem được ảnh"
-  ]
+  "fixed": []
 }
