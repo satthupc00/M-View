@@ -29,6 +29,11 @@ contextBridge.exposeInMainWorld('mv', {
   updateInstall: () => call('update-install'),
   pathForFile: file => webUtils.getPathForFile(file),
   fileUrl: p => 'mview://f/' + encodeURIComponent(p),
+  // đường dẫn tuyệt đối (dùng tìm texture cạnh model 3D)
+  exists: p => { try { return require('fs').statSync(p).isFile(); } catch { return false; } },
+  readText: p => { try { return require('fs').readFileSync(p, 'utf8'); } catch { return null; } },
+  dirOf: p => require('path').dirname(p),
+  join: (...a) => require('path').join(...a),
   onOpenFile: fn => on('open-file', fn),
   onFullscreen: fn => on('fullscreen', fn),
   onUpdateState: fn => on('update-state', fn),

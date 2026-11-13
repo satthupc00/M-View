@@ -168,3 +168,23 @@ body.fs .toast{bottom:20px}
 
 @media (max-width:760px){.file-info{display:none!important}.tools .opt{display:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* trình xem 3D */
+.v3dwrap{position:absolute;inset:0}
+.v3dwrap canvas.v3d{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;cursor:grab}
+.v3dwrap canvas.v3d:active{cursor:grabbing}
+.v3dtools{position:absolute;left:12px;top:12px;display:flex;gap:4px;background:rgba(31,33,38,.8);border:1px solid var(--line);border-radius:8px;padding:4px;z-index:2}
+.animbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;width:min(560px,calc(100% - 28px));
+  background:rgba(31,33,38,.88);border:1px solid var(--line);border-radius:8px;padding:6px 10px;z-index:2;animation:popin .2s var(--ease-out)}
+.animbar select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 6px;max-width:160px;color:var(--text)}
+.animbar select:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(229,56,59,.18);outline:none}
+.animbar .t{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;min-width:52px;text-align:right}
+.animbar #b3Play.playing svg path{d:path("M7 5h3v14H7zM14 5h3v14h-3z")}
+.animbar svg path{fill:currentColor;stroke:none}
+input[type=range]{-webkit-appearance:none;appearance:none;height:16px;background:transparent;flex:1;min-width:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(to right,var(--red) var(--fill,0%),#474C55 var(--fill,0%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4px;border-radius:50%;background:#fff;transition:transform var(--t-med) var(--ease-spring),box-shadow var(--t-med) var(--ease-out)}
+input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.25);box-shadow:0 0 0 4px rgba(229,56,59,.25)}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4);box-shadow:0 0 0 6px rgba(229,56,59,.25)}
+body.is3d .imgwrap,body.is3d .nav{display:none}
+body.is3d #bAlpha,body.is3d .rotbtns{display:none}

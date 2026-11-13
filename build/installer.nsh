@@ -28,11 +28,24 @@
   !insertmacro MV_ADD "tga" "MonView.tga"
   !insertmacro MV_ADD "tif" "MonView.tif"
   !insertmacro MV_ADD "tiff" "MonView.tif"
+  ; Model 3D: chỉ thêm vào "Open with" + menu chuột phải, không giành làm app mặc định (để Maya/Blender/3ds Max giữ nguyên)
+  WriteRegStr SHELL_CONTEXT "Software\Classes\MonView.model3d" "" "Model 3D"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\MonView.model3d\DefaultIcon" "" "$appExe,0"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\MonView.model3d\shell\open\command" "" '"$appExe" "%1"'
+  !insertmacro MV_ADD "fbx" "MonView.model3d"
+  !insertmacro MV_ADD "obj" "MonView.model3d"
+  !insertmacro MV_ADD "glb" "MonView.model3d"
+  !insertmacro MV_ADD "gltf" "MonView.model3d"
   ; báo Explorer cập nhật icon theo loại file
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
 !macroend
 
 !macro customUnInstall
+  !insertmacro MV_REMOVE "fbx" "MonView.model3d"
+  !insertmacro MV_REMOVE "obj" "MonView.model3d"
+  !insertmacro MV_REMOVE "glb" "MonView.model3d"
+  !insertmacro MV_REMOVE "gltf" "MonView.model3d"
+  DeleteRegKey SHELL_CONTEXT "Software\Classes\MonView.model3d"
   !insertmacro MV_REMOVE "png" "MonView.png"
   !insertmacro MV_REMOVE "jpg" "MonView.jpg"
   !insertmacro MV_REMOVE "jpeg" "MonView.jpg"

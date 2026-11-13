@@ -11,7 +11,8 @@ const { Worker } = require('worker_threads');
 const EXTS = ['png', 'jpg', 'jpeg', 'jfif', 'gif', 'webp', 'ico', 'bmp', 'psd', 'psb', 'tga', 'tif', 'tiff'];
 const DECODED = new Set(['psd', 'psb', 'tga', 'tif', 'tiff']);
 const extOf = p => path.extname(p).slice(1).toLowerCase();
-const isImage = p => EXTS.includes(extOf(p));
+const MODEL_EXTS = ['fbx', 'obj', 'glb', 'gltf'];
+const isImage = p => EXTS.includes(extOf(p)) || MODEL_EXTS.includes(extOf(p)); // ảnh + model 3D
 const ASSOC_DIR = path.join(os.tmpdir(), 'MonView-assoc');
 const inAssocDir = p => path.resolve(p).toLowerCase().startsWith(ASSOC_DIR.toLowerCase());
 
@@ -184,7 +185,7 @@ ipcMain.handle('list-dir', async (_e, file) => {
 ipcMain.handle('file-info', async (_e, file) => {
   const st = await fsp.stat(file);
   const ext = extOf(file);
-  const info = { size: st.size, ext, decoded: DECODED.has(ext) };
+  const info = { size: st.size, ext, decoded: DECODED.has(ext), model: MODEL_EXTS.includes(ext) };
   if (ext === 'gif' || ext === 'webp') {
     const buf = await fsp.readFile(file);
     info.frames = ext === 'gif' ? gifFrames(buf) : webpFrames(buf);
@@ -221,7 +222,7 @@ ipcMain.handle('fullscreen', (e, on) => { const w = BrowserWindow.fromWebContent
 ipcMain.handle('open-dialog', async e => {
   const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), {
     title: 'Mở ảnh', properties: ['openFile'],
-    filters: [{ name: 'Ảnh', extensions: EXTS }, { name: 'Tất cả', extensions: ['*'] }]
+    filters: [{ name: 'Ảnh và model 3D', extensions: [...EXTS, ...MODEL_EXTS] }, { name: 'Ảnh', extensions: EXTS }, { name: 'Model 3D', extensions: MODEL_EXTS }, { name: 'Tất cả', extensions: ['*'] }]
   });
   return r.canceled ? null : r.filePaths[0];
 });

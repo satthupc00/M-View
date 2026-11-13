@@ -1,7 +1,7 @@
 {
   "name": "mon-view",
   "productName": "Mon View",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Mon View - xem ảnh nhanh",
   "author": "Mondiro",
   "license": "UNLICENSED",
@@ -14,7 +14,8 @@
   },
   "devDependencies": {
     "electron": "^33.4.11",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "three": "^0.186.1"
   },
   "dependencies": {
     "ag-psd": "^33.0.0",

@@ -10,6 +10,9 @@ let el = null, iw = 0, ih = 0, rot = 0, rotAcc = 0, scale = 1, tx = 0, ty = 0, m
 // ds/dx/dy: giá trị đang vẽ, chạy mượt dần tới scale/tx/ty (animation zoom)
 let ds = 1, dx = 0, dy = 0, zRaf = 0, zLast = 0;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+// trình xem 3D: chỉ nạp module khi mở file 3D đầu tiên
+let v3 = null, v3Promise = null, is3D = false, m3 = null;
+const MODELS = ['fbx', 'obj', 'glb', 'gltf'];
 let version = '';
 
 /* ---------- tiện ích ---------- */
@@ -65,9 +68,10 @@ function apply(anim) {
   renderMeta();
 }
 function flashZoom() { const t = $('#ztip'); t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 280); }
-function setFit(anim, fill) { mode = fill ? 'fill' : 'fit'; scale = fitScale(fill); center(); apply(anim); }
+function setFit(anim, fill) { if (is3D) { v3.frame(anim); return; } mode = fill ? 'fill' : 'fit'; scale = fitScale(fill); center(); apply(anim); }
 const refit = anim => setFit(anim, mode === 'fill');
 function zoomAt(f, cx, cy, anim) {
+  if (is3D) { v3.zoom(f); return; }
   if (!el) return;
   const { w, h } = stageSize(); if (cx == null) { cx = w / 2; cy = h / 2; }
   const ns = Math.min(32, Math.max(0.01, scale * f));
@@ -75,6 +79,7 @@ function zoomAt(f, cx, cy, anim) {
   clampPan(); apply(anim); flashZoom();
 }
 function toggle11(cx, cy) {
+  if (is3D) { v3.frame(true); return; }
   if (!el) return;
   if (mode === 'one') setFit(true);
   else {
@@ -84,7 +89,7 @@ function toggle11(cx, cy) {
   flashZoom();
 }
 function rotate(d) {
-  if (!el) return;
+  if (!el || is3D) return;
   const ow = effW(), oh = effH();
   rot = (rot + d + 360) % 360; rotAcc += d;
   el.classList.add('rotating'); clearTimeout(el._rt); el._rt = setTimeout(() => el.classList.remove('rotating'), 320);
@@ -97,6 +102,14 @@ function rotate(d) {
 function renderMeta() {
   if (!file || !info) { $('#fmeta').innerHTML = ''; return; }
   const ext = extOf(file), parts = [];
+  if (is3D && m3) {
+    const k = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : n;
+    parts.push(`<span class="tag">${ext.toUpperCase()}</span>`, `<span><b>${k(m3.tris)}</b> tam giác</span>`, `<span>${k(m3.verts)} đỉnh</span>`, `<span>${m3.meshes} mesh</span>`);
+    if (m3.bones) parts.push(`<span>${m3.bones} xương</span>`);
+    if (m3.clips) parts.push(`<span>${m3.clips} animation</span>`);
+    parts.push(`<span>${fmtSize(info.size)}</span>`);
+    $('#fmeta').innerHTML = parts.join(''); return;
+  }
   if (!el) { $('#fmeta').innerHTML = `<span class="tag">${NAMES[ext] || ext.toUpperCase()}</span><span>${fmtSize(info.size)}</span>`; return; }
   const W = dec ? dec.fullW : iw, H = dec ? dec.fullH : ih;
   parts.push(`<span><b>${W} × ${H}</b></span>`, `<span class="tag">${NAMES[ext] || ext.toUpperCase()}</span>`);
@@ -117,8 +130,8 @@ function renderHeader() {
   $('#fpath').textContent = has ? file : 'Chưa mở ảnh';
   $('#fpath').title = has ? file : '';
   stage.classList.toggle('single', list.length < 2);
-  ['#zOut', '#zIn', '#zVal', '#bRotL', '#bRotR'].forEach(s => { $(s).disabled = !el; });
-  if (!el) $('#zVal').textContent = '–';
+  ['#zOut', '#zIn', '#zVal', '#bRotL', '#bRotR'].forEach(s => { $(s).disabled = !el && !is3D; });
+  if (is3D) $('#zVal').textContent = '3D'; else if (!el) $('#zVal').textContent = '–';
 }
 function showMsg(title, sub, detail) {
   const m = $('#msg');
@@ -130,7 +143,7 @@ function showMsg(title, sub, detail) {
 const preloadCache = new Map();
 function preloadNeighbors() {
   if (list.length < 2) return;
-  const want = [list[(idx + 1) % list.length], list[(idx - 1 + list.length) % list.length]].filter(p => !['psd', 'psb', 'tga', 'tif', 'tiff'].includes(extOf(p)));
+  const want = [list[(idx + 1) % list.length], list[(idx - 1 + list.length) % list.length]].filter(p => !['psd', 'psb', 'tga', 'tif', 'tiff', ...MODELS].includes(extOf(p)));
   for (const k of [...preloadCache.keys()]) if (!want.includes(k)) preloadCache.delete(k);
   for (const p of want) if (!preloadCache.has(p)) { const im = new Image(); im.crossOrigin = 'anonymous'; im.src = mv.fileUrl(p); preloadCache.set(p, im); }
 }
@@ -138,10 +151,12 @@ function preloadNeighbors() {
 async function load(p) {
   const my = ++token;
   file = p; info = null;
+  if (is3D && !MODELS.includes(extOf(p))) v3.stop(); // rời 3D: dừng vẽ ngay để ảnh mới hiện nhanh
   const ldT = setTimeout(() => { if (my === token) $('#loading').hidden = false; }, 150);
   renderHeader();
   try {
     info = await mv.fileInfo(p);
+    if (info.model) { await show3D(p, my); return; }
     let node, d = null;
     if (info.decoded) {
       d = await mv.decode(p);
@@ -156,23 +171,68 @@ async function load(p) {
       await node.decode();
       if (my !== token) return;
     }
+    leave3D();
     dec = d; el = node; iw = d ? d.width : node.naturalWidth; ih = d ? d.height : node.naturalHeight; rot = 0; rotAcc = 0;
     wrap.replaceChildren(el); wrap.hidden = false; showMsg(null);
     layoutEl(); setFit(false);
     preloadNeighbors();
   } catch (err) {
     if (my !== token) return;
+    leave3D();
     el = null; dec = null; iw = ih = 0; wrap.replaceChildren(); wrap.hidden = true;
     const m = String(err && err.message || err);
     if (m.includes('NO_COMPOSITE')) showMsg('File này không lưu ảnh gộp', 'Trong Photoshop bật "Maximize PSD and PSB File Compatibility" rồi lưu lại file.');
     else if (m.includes('ENOENT')) showMsg('Không tìm thấy file', 'File đã bị xoá hoặc đổi tên.');
-    else showMsg('Không mở được ảnh này', baseName(p), m.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''));
+    else showMsg(MODELS.includes(extOf(p)) ? 'Không mở được model này' : 'Không mở được ảnh này', baseName(p), m.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''));
     renderMeta();
   } finally {
     clearTimeout(ldT);
     if (my === token) { $('#loading').hidden = true; renderHeader(); }
   }
 }
+
+/* ---------- 3D ---------- */
+function getViewer() {
+  v3Promise ||= import('./viewer3d.js').then(m => { v3 = m.createViewer($('#v3d'), mv); v3.onChange(renderAnim); return v3; });
+  return v3Promise;
+}
+async function show3D(p, my) {
+  const v = await getViewer();
+  if (my !== token) return;
+  is3D = true; document.body.classList.add('is3d'); $('#v3d').hidden = false;
+  el = null; dec = null; wrap.replaceChildren(); showMsg(null);
+  v.setBg(S.bg); v.show();
+  m3 = null; animKey = '';
+  m3 = await v.load(p);
+  if (my !== token) return;
+  $('#b3Wire').classList.toggle('on', v.wire); $('#b3Grid').classList.toggle('on', v.grid);
+  renderAnim(); renderMeta();
+}
+function leave3D() {
+  if (!is3D) return;
+  is3D = false; m3 = null; document.body.classList.remove('is3d');
+  $('#v3d').hidden = true; $('#animbar').hidden = true; v3?.hide();
+}
+let animKey = '';
+function renderAnim() {
+  const bar = $('#animbar');
+  if (!is3D || !v3 || !v3.clips.length) { bar.hidden = true; return; }
+  const clips = v3.clips, key = file + clips.length;
+  if (key !== animKey) { animKey = key; $('#s3Clip').innerHTML = clips.map((c, i) => `<option value="${i}">${esc(c.name)}</option>`).join(''); }
+  bar.hidden = false;
+  const c = clips[Math.max(0, v3.current)], r = $('#r3Time');
+  $('#s3Clip').value = String(Math.max(0, v3.current));
+  r.max = c.duration || 1; r.value = v3.time % (c.duration || 1);
+  r.style.setProperty('--fill', (r.value / r.max * 100) + '%');
+  $('#t3Time').textContent = (+r.value).toFixed(2) + 's';
+  $('#b3Play').classList.toggle('playing', v3.playing);
+}
+$('#b3Play').onclick = () => v3?.togglePlay();
+$('#s3Clip').onchange = e => v3?.play(+e.target.value);
+$('#r3Time').oninput = e => { if (v3.playing) v3.togglePlay(); v3.seek(+e.target.value); };
+$('#b3Wire').onclick = () => { v3.setWire(!v3.wire); $('#b3Wire').classList.toggle('on', v3.wire); };
+$('#b3Grid').onclick = () => { v3.setGrid(!v3.grid); $('#b3Grid').classList.toggle('on', v3.grid); };
+$('#b3Frame').onclick = () => v3.frame(true);
 
 async function openFile(p) {
   const same = list.findIndex(x => x.toLowerCase() === p.toLowerCase());
@@ -188,6 +248,7 @@ function navTo(i) { if (!list.length) return; idx = i; load(list[idx]); }
 
 /* ---------- lệnh ---------- */
 async function copyImage() {
+  if (is3D) { await mv.copyImage(v3.snapshot()); toast('Đã sao chép hình model'); return; }
   if (!el) return;
   const c = document.createElement('canvas'); c.width = iw; c.height = ih;
   c.getContext('2d').drawImage(el, 0, 0);
@@ -205,13 +266,14 @@ async function trashCurrent() {
   idx = Math.min(idx, list.length - 1); load(list[idx]);
 }
 async function openDialog() { const p = await mv.openDialog(); if (p) openFile(p); }
-function setBg(c) { S.bg = c; stage.style.setProperty('--bg', c); $('#bgDot').style.background = c; mv.setSettings({ bg: c }); }
+function setBg(c) { S.bg = c; v3?.setBg(c); stage.style.setProperty('--bg', c); $('#bgDot').style.background = c; mv.setSettings({ bg: c }); }
 function setAlpha(v) { S.alpha = v; $('#bAlpha').classList.toggle('on', v); wrap.classList.toggle('checker', v); mv.setSettings({ alpha: v }); }
 function cycleBg() { setBg(BGS[(BGS.indexOf(S.bg) + 1) % BGS.length]); }
 
 /* ---------- chuột ---------- */
 let wAcc = 0, wLast = 0, navLast = 0;
 stage.addEventListener('wheel', e => {
+  if (is3D) return; // xem 3D: lăn chuột để zoom view (do trình xem 3D xử lý)
   e.preventDefault();
   if (e.ctrlKey) { if (!el) return; const r = stage.getBoundingClientRect(); zoomAt(Math.pow(1.0018, -e.deltaY), e.clientX - r.left, e.clientY - r.top, true); return; }
   const now = performance.now();
@@ -224,6 +286,7 @@ let drag = null;
 stage.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); }); // tắt auto-scroll của chuột giữa
 stage.addEventListener('pointerdown', e => {
   if (e.button === 1) { e.preventDefault(); mv.fullscreen(); return; }
+  if (is3D) return;
   if (e.button !== 0 || e.target.closest('.nav,.updcard,.empty button')) return;
   closeCtx();
   if (!el) return;
@@ -239,19 +302,23 @@ stage.addEventListener('pointermove', e => {
 });
 const endDrag = () => { drag = null; stage.classList.remove('grabbing'); };
 stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
-stage.addEventListener('dblclick', e => { if (e.target.closest('.nav,.updcard,.empty')) return; const r = stage.getBoundingClientRect(); toggle11(e.clientX - r.left, e.clientY - r.top); });
+stage.addEventListener('dblclick', e => { if (e.target.closest('.nav,.updcard,.empty,.v3dtools,.animbar')) return; if (is3D) { v3.frame(true); return; } const r = stage.getBoundingClientRect(); toggle11(e.clientX - r.left, e.clientY - r.top); });
 stage.addEventListener('auxclick', e => e.preventDefault());
 // Giữ chuột trái + bấm chuột phải: phóng ảnh vừa khung app
-let skipCtx = false;
+let skipCtx = false, rDown = null;
+stage.addEventListener('mousedown', e => { if (e.button === 2) rDown = { x: e.clientX, y: e.clientY }; });
 stage.addEventListener('mousedown', e => {
   if (e.button !== 2 || !(e.buttons & 1)) return;
   e.preventDefault(); skipCtx = true; endDrag(); closeCtx();
-  if (el) { setFit(true, true); flashZoom(); }
+  if (is3D) v3.frame(true); else if (el) { setFit(true, true); flashZoom(); }
 });
 document.addEventListener('contextmenu', e => {
   e.preventDefault();
   if (e.target.closest('.top,.dlg')) return;
   if (skipCtx) { skipCtx = false; return; }
+  // xem 3D: kéo chuột phải để dời view, thả ra không mở menu
+  if (is3D && rDown && Math.hypot(e.clientX - rDown.x, e.clientY - rDown.y) > 4) { rDown = null; return; }
+  rDown = null;
   openCtx(e.clientX, e.clientY);
 });
 
@@ -306,21 +373,29 @@ function openCtx(x, y) {
   closeCtx();
   if ($('.veil')) return;
   ctxEl = document.createElement('div'); ctxEl.className = 'ctx';
-  const has = !!el, f = !!file;
+  const has = !!el || is3D, f = !!file;
   const it = (a, icon, label, key, on = true) => `<div class="it${on ? '' : ' dis'}" data-a="${a}">${ic(icon)}${label}${key ? `<span class="k">${key}</span>` : ''}</div>`;
+  const view = is3D ? [
+    it('fit', 'fit', 'Vừa khung', 'F', true),
+    it('fs', 'fs', document.body.classList.contains('fs') ? 'Thoát toàn màn hình' : 'Toàn màn hình', 'Chuột giữa'),
+    it('wire', 'grid', `${v3.wire ? 'Tắt' : 'Bật'} wireframe`, 'W'),
+    it('grid3', 'grid', `${v3.grid ? 'Ẩn' : 'Hiện'} lưới sàn`, 'G'),
+    ...(v3.clips.length ? [it('play', 'rot', v3.playing ? 'Dừng animation' : 'Phát animation', 'Space')] : []),
+    '<hr>'] : null;
   ctxEl.innerHTML = [
     it('open', 'open', 'Mở ảnh…', 'Ctrl+O'),
     '<hr>',
+    ...(view || [
     mode === 'one' ? it('fit', 'fit', 'Vừa khung', 'Ctrl+0', has) : it('one', 'one', 'Kích thước thật 1:1', 'Ctrl+0', has),
     it('fill', 'fit', 'Phóng vừa khung app', 'Giữ trái + phải', has),
     it('fs', 'fs', document.body.classList.contains('fs') ? 'Thoát toàn màn hình' : 'Toàn màn hình', 'Chuột giữa'),
     it('rotr', 'rot', 'Xoay phải 90°', 'Ctrl+→', has),
     it('rotl', 'rotl', 'Xoay trái 90°', 'Ctrl+←', has),
     '<hr>',
-    it('alpha', 'grid', `${S.alpha ? 'Tắt' : 'Bật'} nền caro (alpha)`, 'A'),
+    it('alpha', 'grid', `${S.alpha ? 'Tắt' : 'Bật'} nền caro (alpha)`, 'A')]),
     `<div class="sw">${BGS.map(c => `<i style="background:${c}" data-c="${c}" class="${c === S.bg ? 'on' : ''}" title="Màu nền ${c}"></i>`).join('')}</div>`,
     '<hr>',
-    it('copy', 'copy', 'Sao chép ảnh', 'Ctrl+C', has),
+    it('copy', 'copy', is3D ? 'Sao chép hình đang xem' : 'Sao chép ảnh', 'Ctrl+C', has),
     it('path', 'link', 'Sao chép đường dẫn', 'Ctrl+Shift+C', f),
     it('folder', 'folder', 'Mở thư mục chứa ảnh', 'Ctrl+E', f),
     it('newwin', 'win', 'Mở trong cửa sổ mới', 'Ctrl+N'),
@@ -350,6 +425,9 @@ function run(a) {
     case 'rotr': return rotate(90);
     case 'rotl': return rotate(-90);
     case 'alpha': return setAlpha(!S.alpha);
+    case 'wire': return $('#b3Wire').click();
+    case 'grid3': return $('#b3Grid').click();
+    case 'play': return v3?.togglePlay();
     case 'copy': return copyImage();
     case 'path': return copyPath();
     case 'folder': return file && mv.showInFolder(file);
@@ -514,6 +592,12 @@ document.addEventListener('keydown', e => {
   if (k === 'F11') { e.preventDefault(); mv.fullscreen(); return; }
   if (k === '+' || k === '=' || e.code === 'NumpadAdd') { e.preventDefault(); zoomAt(1.25, null, null, true); return; }
   if (k === '-' || k === '_' || e.code === 'NumpadSubtract') { e.preventDefault(); zoomAt(1 / 1.25, null, null, true); return; }
+  if (is3D && !ctrl) { // phím riêng khi xem 3D
+    if (k === 'w' || k === 'W') { $('#b3Wire').click(); return; }
+    if (k === 'g' || k === 'G') { $('#b3Grid').click(); return; }
+    if (k === ' ') { e.preventDefault(); v3.togglePlay(); return; }
+    if (k === 'f' || k === 'F') { v3.frame(true); return; }
+  }
   if (ctrl && k === 'ArrowRight') { e.preventDefault(); rotate(90); return; }
   if (ctrl && k === 'ArrowLeft') { e.preventDefault(); rotate(-90); return; }
   if (ctrl) return;
