@@ -4,7 +4,9 @@ const stage = $('#stage'), wrap = $('#wrap');
 const BGS = ['#2B2D31', '#1F2126', '#000000', '#808080', '#FFFFFF', '#E8E2D6'];
 const NAMES = { jpg: 'JPG', jpeg: 'JPG', jfif: 'JPG', tif: 'TIFF', tiff: 'TIFF' };
 
-const S = { bg: BGS[0], alpha: true, upscale: false, pixel: true };
+const S = { bg: BGS[0], alpha: true, upscale: false, pixel: true, view3d: 'lit', wireColor: '#000000', wireWidth: 1.2 };
+const VIEWS = { lit: 'Lit', litwire: 'Lit + Wire', wire: 'Wire' };
+const WIRE_COLORS = ['#000000', '#FFFFFF', '#E5383B', '#3D9BFF', '#3DDC8A', '#F2B84B'];
 let list = [], idx = -1, file = null, info = null, dec = null;
 let el = null, iw = 0, ih = 0, rot = 0, rotAcc = 0, scale = 1, tx = 0, ty = 0, mode = 'fit', token = 0;
 // ds/dx/dy: giá trị đang vẽ, chạy mượt dần tới scale/tx/ty (animation zoom)
@@ -201,11 +203,11 @@ async function show3D(p, my) {
   if (my !== token) return;
   is3D = true; document.body.classList.add('is3d'); $('#v3d').hidden = false;
   el = null; dec = null; wrap.replaceChildren(); showMsg(null);
-  v.setBg(S.bg); v.show();
+  v.setBg(S.bg); v.setWireStyle({ color: S.wireColor, width: S.wireWidth }); v.setView(S.view3d); v.show();
   m3 = null; animKey = '';
   m3 = await v.load(p);
   if (my !== token) return;
-  $('#b3Wire').classList.toggle('on', v.wire); $('#b3Grid').classList.toggle('on', v.grid);
+  markView(); $('#b3Grid').classList.toggle('on', v.grid);
   renderAnim(); renderMeta();
 }
 function leave3D() {
@@ -230,7 +232,11 @@ function renderAnim() {
 $('#b3Play').onclick = () => v3?.togglePlay();
 $('#s3Clip').onchange = e => v3?.play(+e.target.value);
 $('#r3Time').oninput = e => { if (v3.playing) v3.togglePlay(); v3.seek(+e.target.value); };
-$('#b3Wire').onclick = () => { v3.setWire(!v3.wire); $('#b3Wire').classList.toggle('on', v3.wire); };
+function markView() { document.querySelectorAll('#seg3 button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view3d)); }
+function setView3d(mode) { S.view3d = mode; mv.setSettings({ view3d: mode }); v3?.setView(mode); markView(); }
+function cycleView3d() { const k = Object.keys(VIEWS); setView3d(k[(k.indexOf(S.view3d) + 1) % k.length]); }
+$('#seg3').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView3d(b.dataset.v); };
+function setWireStyle(p) { Object.assign(S, p); mv.setSettings(p); v3?.setWireStyle({ color: S.wireColor, width: S.wireWidth }); }
 $('#b3Grid').onclick = () => { v3.setGrid(!v3.grid); $('#b3Grid').classList.toggle('on', v3.grid); };
 $('#b3Frame').onclick = () => v3.frame(true);
 
@@ -378,7 +384,7 @@ function openCtx(x, y) {
   const view = is3D ? [
     it('fit', 'fit', 'Vừa khung', 'F', true),
     it('fs', 'fs', document.body.classList.contains('fs') ? 'Thoát toàn màn hình' : 'Toàn màn hình', 'Chuột giữa'),
-    it('wire', 'grid', `${v3.wire ? 'Tắt' : 'Bật'} wireframe`, 'W'),
+    it('view', 'grid', `Chế độ xem: ${VIEWS[S.view3d]}`, 'W'),
     it('grid3', 'grid', `${v3.grid ? 'Ẩn' : 'Hiện'} lưới sàn`, 'G'),
     ...(v3.clips.length ? [it('play', 'rot', v3.playing ? 'Dừng animation' : 'Phát animation', 'Space')] : []),
     '<hr>'] : null;
@@ -425,7 +431,7 @@ function run(a) {
     case 'rotr': return rotate(90);
     case 'rotl': return rotate(-90);
     case 'alpha': return setAlpha(!S.alpha);
-    case 'wire': return $('#b3Wire').click();
+    case 'view': return cycleView3d();
     case 'grid3': return $('#b3Grid').click();
     case 'play': return v3?.togglePlay();
     case 'copy': return copyImage();
@@ -468,6 +474,11 @@ function openSettings() {
       <label class="row"><input type="checkbox" id="sUp" ${S.upscale ? 'checked' : ''}><span class="grow">Phóng to ảnh nhỏ cho đầy khung khi Fit</span></label>
       <label class="row"><input type="checkbox" id="sPix" ${S.pixel ? 'checked' : ''}><span class="grow">Hiện rõ từng pixel khi zoom từ 200%</span></label>
     </section>
+    <section><h4>Xem 3D</h4>
+      <div class="row"><span class="grow">Chế độ xem mặc định</span><div class="seg" id="sView">${Object.entries(VIEWS).map(([k, n]) => `<button data-v="${k}" class="${k === S.view3d ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+      <div class="row"><span class="grow">Màu lưới</span><div class="sw" id="sWireSw">${WIRE_COLORS.map(c => `<i style="background:${c}" class="${c.toLowerCase() === S.wireColor.toLowerCase() ? 'on' : ''}" data-wc="${c}" title="${c}"></i>`).join('')}</div><input type="color" id="sWirePick" value="${S.wireColor}" title="Chọn màu khác"></div>
+      <div class="row"><span class="grow">Độ dày lưới</span><div class="wrow"><input type="range" id="sWireW" min="0.5" max="4" step="0.1" value="${S.wireWidth}"><span class="val" id="sWireWv">${(+S.wireWidth).toFixed(1)} px</span></div></div>
+    </section>
     <section><h4>Phiên bản</h4>
       <div class="row"><span class="grow">Mon View v${esc(version)}</span>
         <button class="btn2" id="sNew"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4zM19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>What's new</button>
@@ -475,6 +486,10 @@ function openSettings() {
     </section>`, (e, v) => {
     const c = e.target.closest('[data-c]');
     if (c) { setBg(c.dataset.c); v.querySelectorAll('#sSw i').forEach(i => i.classList.toggle('on', i === c)); v.querySelector('#sPick').value = c.dataset.c; return; }
+    const wc = e.target.closest('[data-wc]');
+    if (wc) { setWireStyle({ wireColor: wc.dataset.wc }); v.querySelectorAll('#sWireSw i').forEach(i => i.classList.toggle('on', i === wc)); v.querySelector('#sWirePick').value = wc.dataset.wc; return; }
+    const vb = e.target.closest('#sView [data-v]');
+    if (vb) { setView3d(vb.dataset.v); v.querySelectorAll('#sView button').forEach(b => b.classList.toggle('on', b === vb)); return; }
     const fmt = e.target.closest('.fmt'); if (fmt) { if (!fmt.classList.contains('ok')) setDefault([fmt.dataset.ext]); return; }
     if (e.target.closest('#sDefAll')) { setDefault(ASSOC.map(a => a[0])); return; }
     if (e.target.closest('#sDefApps')) mv.openDefaultApps();
@@ -483,6 +498,11 @@ function openSettings() {
   });
   v.querySelector('#sPick').oninput = e => { setBg(e.target.value); v.querySelectorAll('#sSw i').forEach(i => i.classList.remove('on')); };
   v.querySelector('#sAlpha').onchange = e => setAlpha(e.target.checked);
+  v.querySelector('#sWirePick').oninput = e => { setWireStyle({ wireColor: e.target.value }); v.querySelectorAll('#sWireSw i').forEach(i => i.classList.remove('on')); };
+  const ww = v.querySelector('#sWireW');
+  const fillW = () => ww.style.setProperty('--fill', ((ww.value - ww.min) / (ww.max - ww.min) * 100) + '%');
+  fillW();
+  ww.oninput = () => { fillW(); v.querySelector('#sWireWv').textContent = (+ww.value).toFixed(1) + ' px'; setWireStyle({ wireWidth: +ww.value }); };
   v.querySelector('#sUp').onchange = e => { S.upscale = e.target.checked; mv.setSettings({ upscale: S.upscale }); if (mode === 'fit') setFit(true); };
   v.querySelector('#sPix').onchange = e => { S.pixel = e.target.checked; mv.setSettings({ pixel: S.pixel }); apply(false); };
   refreshAssoc();
@@ -593,7 +613,7 @@ document.addEventListener('keydown', e => {
   if (k === '+' || k === '=' || e.code === 'NumpadAdd') { e.preventDefault(); zoomAt(1.25, null, null, true); return; }
   if (k === '-' || k === '_' || e.code === 'NumpadSubtract') { e.preventDefault(); zoomAt(1 / 1.25, null, null, true); return; }
   if (is3D && !ctrl) { // phím riêng khi xem 3D
-    if (k === 'w' || k === 'W') { $('#b3Wire').click(); return; }
+    if (k === 'w' || k === 'W') { cycleView3d(); return; }
     if (k === 'g' || k === 'G') { $('#b3Grid').click(); return; }
     if (k === ' ') { e.preventDefault(); v3.togglePlay(); return; }
     if (k === 'f' || k === 'F') { v3.frame(true); return; }

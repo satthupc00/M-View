@@ -35,7 +35,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'mview', privileges: { standard:
 
 // ---- Settings ----
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { bounds: null, maximized: false, bg: '#2B2D31', alpha: true, upscale: false, pixel: true };
+const DEFAULTS = { bounds: null, maximized: false, bg: '#2B2D31', alpha: true, upscale: false, pixel: true, view3d: 'lit', wireColor: '#000000', wireWidth: 1.2 };
 let settings = { ...DEFAULTS };
 try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) }; } catch {}
 let saveTimer = null;
@@ -168,7 +168,7 @@ function webpFrames(buf) {
 ipcMain.handle('init', e => ({
   file: pending.get(e.sender.id) || null,
   version: app.getVersion(),
-  settings: { bg: settings.bg, alpha: settings.alpha, upscale: settings.upscale, pixel: settings.pixel },
+  settings: { bg: settings.bg, alpha: settings.alpha, upscale: settings.upscale, pixel: settings.pixel, view3d: settings.view3d, wireColor: settings.wireColor, wireWidth: settings.wireWidth },
   fullscreen: BrowserWindow.fromWebContents(e.sender)?.isFullScreen() || false
 }));
 

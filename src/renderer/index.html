@@ -36,7 +36,12 @@
     <div class="loading" id="loading" hidden><i></i></div>
     <div class="v3dwrap" id="v3d" hidden>
       <div class="v3dtools">
-        <button class="ibtn sm" id="b3Wire" title="Khung lưới wireframe (W)" aria-label="Wireframe"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg></button>
+        <div class="seg" id="seg3" role="group" aria-label="Chế độ xem">
+          <button data-v="lit" title="Lit: bề mặt có ánh sáng (W)">Lit</button>
+          <button data-v="litwire" title="Lit + Wire: bề mặt kèm lưới (W)">Lit + Wire</button>
+          <button data-v="wire" title="Wire: chỉ lưới (W)">Wire</button>
+        </div>
+        <span class="sep"></span>
         <button class="ibtn sm on" id="b3Grid" title="Lưới sàn (G)" aria-label="Lưới sàn"><svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
         <button class="ibtn sm" id="b3Frame" title="Vừa khung (F)" aria-label="Vừa khung"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       </div>

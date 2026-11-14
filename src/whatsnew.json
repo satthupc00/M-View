@@ -1,16 +1,12 @@
 {
-  "version": "1.1.0",
-  "date": "2026-11-13",
+  "version": "1.1.1",
+  "date": "2026-11-14",
   "new": [
-    "Xem model 3D: FBX, OBJ (kèm MTL), GLB và GLTF, có texture",
-    "Kéo chuột trái để xoay, kéo chuột phải để dời, lăn chuột để zoom; double click hoặc F để vừa khung",
-    "Phát animation có sẵn trong file: chọn clip, phát/dừng (Space), kéo thanh thời gian",
-    "Bật/tắt wireframe (W) và lưới sàn (G); thanh dưới hiện số tam giác, đỉnh, mesh, xương, animation",
-    "Phím ← → chuyển lần lượt qua cả ảnh và model 3D trong cùng thư mục",
-    "Chuột phải file FBX/OBJ/GLB trong Explorer có mục \"Mở bằng Mon View\""
+    "Xem 3D có 3 chế độ: Lit, Lit + Wire, Wire (nút góc trên bên trái, hoặc phím W để chuyển)",
+    "Cài đặt → Xem 3D: chọn chế độ xem mặc định, màu lưới và độ dày lưới"
   ],
   "improved": [
-    "Phần xem 3D chỉ nạp khi mở file 3D đầu tiên, xem ảnh vẫn nhanh như cũ"
+    "Lưới wireframe chỉnh được độ dày (mặc định đen, 1.2 px) và chạy theo animation của nhân vật có xương"
   ],
   "fixed": []
 }

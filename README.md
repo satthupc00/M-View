@@ -24,7 +24,7 @@ Xem được model 3D: FBX, OBJ, GLB, GLTF (texture + animation).
 |---|---|
 | Xoay / dời / zoom | Kéo chuột trái / kéo chuột phải / lăn chuột |
 | Vừa khung | F hoặc double click |
-| Wireframe / lưới sàn | W / G |
+| Đổi chế độ Lit → Lit + Wire → Wire / lưới sàn | W / G |
 | Phát / dừng animation | Space |
 
 Created by Mondiro

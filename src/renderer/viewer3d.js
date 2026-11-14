@@ -39,7 +39,7 @@ export function createViewer(container, mv) {
   controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: null, RIGHT: THREE.MOUSE.PAN };
 
   let grid = null, root = null, mixer = null, actions = [], cur = -1, playing = false;
-  let wire = false, showGrid = true, dirty = true, raf = 0, active = false, tween = null;
+  let viewMode = 'lit', showGrid = true, dirty = true, raf = 0, active = false, tween = null;
   let tPrev = performance.now();
   const delta = () => { const n = performance.now(), d = (n - tPrev) / 1000; tPrev = n; return Math.min(d, 0.1); };
   let lastEmit = 0;
@@ -90,7 +90,9 @@ export function createViewer(container, mv) {
   function disposeModel() {
     if (!root) return;
     scene.remove(root);
+    overlays.forEach(ov => ov.geometry.dispose()); overlays.clear();
     root.traverse(o => {
+      if (o.userData.isWire) return;
       o.geometry?.dispose();
       for (const m of [].concat(o.material || [])) { for (const k in m) if (m[k]?.isTexture) m[k].dispose(); m.dispose(); }
     });
@@ -157,7 +159,8 @@ export function createViewer(container, mv) {
     }
     root = obj;
     scene.add(root);
-    root.traverse(o => { if (o.isMesh) { o.frustumCulled = false; if (wire) applyWire(o); } });
+    root.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
+    applyView();
     if (clips.length) {
       mixer = new THREE.AnimationMixer(root);
       actions = clips.map(c => mixer.clipAction(c));
@@ -174,7 +177,7 @@ export function createViewer(container, mv) {
     let tris = 0, verts = 0, meshes = 0, bones = 0;
     root.traverse(o => {
       if (o.isBone) bones++;
-      if (!o.isMesh || !o.geometry) return;
+      if (!o.isMesh || !o.geometry || o.userData.isWire) return;
       meshes++;
       const g = o.geometry, pos = g.attributes.position;
       verts += pos ? pos.count : 0;
@@ -183,8 +186,62 @@ export function createViewer(container, mv) {
     return { tris: Math.round(tris), verts, meshes, bones, clips: (clips || []).length };
   }
 
-  function applyWire(o) { for (const m of [].concat(o.material || [])) m.wireframe = wire; }
-  function setWire(v) { wire = v; root?.traverse(o => o.isMesh && applyWire(o)); dirty = true; }
+  // ---- Chế độ xem: 'lit' | 'litwire' | 'wire'
+  // Lưới vẽ bằng shader (toạ độ barycentric) để chỉnh được độ dày và chạy theo skinning/morph,
+  // vì wireframe gốc của WebGL luôn chỉ dày 1px.
+  const wireUni = { uColor: { value: new THREE.Color('#000000') }, uWidth: { value: 1 } };
+  const wireMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+  wireMat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, wireUni);
+    sh.vertexShader = 'attribute vec3 bary;\nvarying vec3 vBary;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBary = bary;');
+    sh.fragmentShader = 'varying vec3 vBary;\nuniform vec3 uColor;\nuniform float uWidth;\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
+      `#include <dithering_fragment>
+      vec3 fw = fwidth(vBary);
+      vec3 e3 = smoothstep(fw * (uWidth - 0.5), fw * (uWidth + 0.5), vBary);
+      float edge = 1.0 - min(min(e3.x, e3.y), e3.z);
+      if (edge < 0.02) discard;
+      gl_FragColor = vec4(uColor, edge);`);
+  };
+  const overlays = new Map(); // mesh -> lớp lưới
+  function baryGeometry(g) {
+    const ng = g.index ? g.toNonIndexed() : g.clone();
+    const n = ng.attributes.position.count, b = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) b[i * 3 + (i % 3)] = 1;
+    ng.setAttribute('bary', new THREE.BufferAttribute(b, 3));
+    return ng;
+  }
+  function overlayFor(mesh) {
+    let ov = overlays.get(mesh);
+    if (ov) return ov;
+    const g = baryGeometry(mesh.geometry);
+    if (mesh.isSkinnedMesh) { ov = new THREE.SkinnedMesh(g, wireMat); ov.bindMode = mesh.bindMode; ov.bind(mesh.skeleton, mesh.bindMatrix); }
+    else ov = new THREE.Mesh(g, wireMat);
+    if (mesh.morphTargetInfluences) { ov.morphTargetInfluences = mesh.morphTargetInfluences; ov.morphTargetDictionary = mesh.morphTargetDictionary; }
+    ov.frustumCulled = false; ov.renderOrder = 1; ov.userData.isWire = true;
+    mesh.add(ov); overlays.set(mesh, ov);
+    return ov;
+  }
+  function applyView() {
+    if (!root) return;
+    const meshes = [];
+    root.traverse(o => { if (o.isMesh && !o.userData.isWire && !o.isInstancedMesh) meshes.push(o); });
+    for (const m of meshes) {
+      const showWire = viewMode !== 'lit';
+      if (showWire) overlayFor(m).visible = true; else if (overlays.has(m)) overlays.get(m).visible = false;
+      // chỉ lưới: ẩn bề mặt nhưng vẫn giữ lớp lưới con
+      for (const mat of [].concat(m.material || [])) {
+        mat.colorWrite = viewMode !== 'wire'; mat.depthWrite = viewMode !== 'wire';
+        mat.polygonOffset = showWire; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 1; mat.needsUpdate = true;
+      }
+    }
+    dirty = true;
+  }
+  function setView(mode) { viewMode = mode; applyView(); }
+  function setWireStyle({ color, width }) {
+    if (color) wireUni.uColor.value.set(color);
+    if (width) wireUni.uWidth.value = width * renderer.getPixelRatio() * 0.5; // mỗi cạnh do 2 tam giác chia đôi bề dày
+    dirty = true;
+  }
   function setGrid(v) { showGrid = v; if (grid) grid.visible = v; dirty = true; }
   function setBg(c) { scene.background = new THREE.Color(c); dirty = true; }
 
@@ -204,8 +261,8 @@ export function createViewer(container, mv) {
   function snapshot() { renderer.render(scene, camera); return canvas.toDataURL('image/png'); }
 
   return {
-    load, frame, zoom, setWire, setGrid, setBg, play, togglePlay, seek, snapshot,
-    get wire() { return wire; }, get grid() { return showGrid; },
+    load, frame, zoom, setView, setWireStyle, setGrid, setBg, play, togglePlay, seek, snapshot,
+    get view() { return viewMode; }, get grid() { return showGrid; },
     get clips() { return actions.map(a => ({ name: a.getClip().name || 'Animation', duration: a.getClip().duration })); },
     get current() { return cur; }, get playing() { return playing; },
     get time() { return cur >= 0 ? actions[cur].time : 0; },
