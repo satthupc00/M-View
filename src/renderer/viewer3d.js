@@ -203,10 +203,69 @@ export function createViewer(container, mv) {
       gl_FragColor = vec4(uColor, edge);`);
   };
   const overlays = new Map(); // mesh -> lớp lưới
+  // Cờ cạnh gốc cho mỗi tam giác (bit0 = v0-v1, bit1 = v1-v2, bit2 = v2-v0; 1 = cạnh thật của mặt gốc).
+  // FBX/OBJ: loader đã ghi lại từ mặt tứ giác/đa giác gốc. GLB/GLTF chỉ lưu tam giác: ghép lại thành tứ giác
+  // giống "Tris to Quads" (cặp tam giác gần phẳng, dùng chung cạnh dài nhất của cả hai).
+  function quadFlags(g) {
+    const pos = g.attributes.position, idx = g.index;
+    const tri = (idx ? idx.count : pos.count) / 3 | 0;
+    const vid = i => (idx ? idx.getX(i) : i);
+    // gộp đỉnh trùng vị trí (glTF tách đỉnh ở đường nối UV)
+    const weld = new Map(), wid = new Int32Array(pos.count);
+    const q = v => Math.round(v * 1e5);
+    for (let i = 0; i < pos.count; i++) {
+      const k = q(pos.getX(i)) + ',' + q(pos.getY(i)) + ',' + q(pos.getZ(i));
+      let w = weld.get(k); if (w === undefined) { w = weld.size; weld.set(k, w); } wid[i] = w;
+    }
+    const flags = new Uint8Array(tri).fill(7);
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+    const nrm = new Float32Array(tri * 3), longest = new Int8Array(tri);
+    const edges = new Map();
+    for (let t = 0; t < tri; t++) {
+      const v = [vid(t * 3), vid(t * 3 + 1), vid(t * 3 + 2)];
+      A.fromBufferAttribute(pos, v[0]); B.fromBufferAttribute(pos, v[1]); C.fromBufferAttribute(pos, v[2]);
+      const l = [A.distanceToSquared(B), B.distanceToSquared(C), C.distanceToSquared(A)];
+      longest[t] = l[0] >= l[1] && l[0] >= l[2] ? 0 : l[1] >= l[2] ? 1 : 2;
+      const n = C.clone().sub(B).cross(A.clone().sub(B)).normalize();
+      nrm[t * 3] = n.x; nrm[t * 3 + 1] = n.y; nrm[t * 3 + 2] = n.z;
+      for (let e = 0; e < 3; e++) {
+        const a = wid[v[e]], b = wid[v[(e + 1) % 3]];
+        const k = a < b ? a + '_' + b : b + '_' + a;
+        const list = edges.get(k); if (list) list.push(t * 3 + e); else edges.set(k, [t * 3 + e]);
+      }
+    }
+    const cand = [];
+    for (const list of edges.values()) {
+      if (list.length !== 2) continue;
+      const [x, y] = list, t1 = x / 3 | 0, t2 = y / 3 | 0;
+      if (t1 === t2 || longest[t1] !== x % 3 || longest[t2] !== y % 3) continue;
+      const d = nrm[t1 * 3] * nrm[t2 * 3] + nrm[t1 * 3 + 1] * nrm[t2 * 3 + 1] + nrm[t1 * 3 + 2] * nrm[t2 * 3 + 2];
+      if (d > 0.82) cand.push([d, x, y]); // lệch dưới ~35°
+    }
+    cand.sort((a, b) => b[0] - a[0]);
+    const used = new Uint8Array(tri);
+    for (const [, x, y] of cand) {
+      const t1 = x / 3 | 0, t2 = y / 3 | 0;
+      if (used[t1] || used[t2]) continue;
+      used[t1] = used[t2] = 1;
+      flags[t1] &= ~(1 << (x % 3)); flags[t2] &= ~(1 << (y % 3));
+    }
+    return flags;
+  }
   function baryGeometry(g) {
+    const tri = (g.index ? g.index.count : g.attributes.position.count) / 3 | 0;
+    let flags = g.userData.edgeFlags;
+    if (!flags || flags.length !== tri) flags = quadFlags(g);
     const ng = g.index ? g.toNonIndexed() : g.clone();
     const n = ng.attributes.position.count, b = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) b[i * 3 + (i % 3)] = 1;
+    for (let i = 0; i < n; i++) {
+      const t = i / 3 | 0, k = i % 3, f = flags[t];
+      b[i * 3 + k] = 1;
+      // ẩn cạnh = giữ thành phần đối diện luôn bằng 1 trên cả tam giác
+      if (!(f & 2)) b[i * 3] = 1;      // cạnh v1-v2, đối diện v0
+      if (!(f & 4)) b[i * 3 + 1] = 1;  // cạnh v2-v0, đối diện v1
+      if (!(f & 1)) b[i * 3 + 2] = 1;  // cạnh v0-v1, đối diện v2
+    }
     ng.setAttribute('bary', new THREE.BufferAttribute(b, 3));
     return ng;
   }

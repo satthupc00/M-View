@@ -1808,6 +1808,7 @@ class GeometryParser {
 		positionAttribute.applyMatrix4( preTransform );
 
 		geo.setAttribute( 'position', positionAttribute );
+		geo.userData.edgeFlags = Uint8Array.from( buffers.edgeFlags ); // MonView
 
 		if ( buffers.colors.length > 0 ) {
 
@@ -1978,6 +1979,7 @@ class GeometryParser {
 			materialIndex: [],
 			vertexWeights: [],
 			weightsIndices: [],
+			edgeFlags: [], // MonView
 		};
 
 		let polygonIndex = 0;
@@ -2257,6 +2259,10 @@ class GeometryParser {
 		}
 
 		for ( const [ i0, i1, i2 ] of triangles ) {
+
+			// MonView: cạnh là cạnh gốc khi 2 đỉnh kề nhau trên đa giác
+			const adj = ( a, b ) => { const d = Math.abs( a - b ); return d === 1 || d === faceLength - 1; };
+			buffers.edgeFlags.push( ( adj( i0, i1 ) ? 1 : 0 ) | ( adj( i1, i2 ) ? 2 : 0 ) | ( adj( i2, i0 ) ? 4 : 0 ) );
 
 			buffers.vertex.push( geoInfo.vertexPositions[ facePositionIndexes[ i0 * 3 ] ] );
 			buffers.vertex.push( geoInfo.vertexPositions[ facePositionIndexes[ i0 * 3 + 1 ] ] );

@@ -643,6 +643,8 @@ class OBJLoader extends Loader {
 
 					const v2 = faceVertices[ j ];
 					const v3 = faceVertices[ j + 1 ];
+					// MonView: tam giác quạt (v1, vj, vj+1) của đa giác n đỉnh
+					( state.object.geometry.edgeFlags ||= [] ).push( ( j === 1 ? 1 : 0 ) | 2 | ( j + 1 === faceVertices.length - 1 ? 4 : 0 ) );
 
 					state.addFace(
 						v1[ 0 ], v2[ 0 ], v3[ 0 ],
@@ -787,6 +789,7 @@ class OBJLoader extends Loader {
 				const buffergeometry = new BufferGeometry();
 
 				buffergeometry.setAttribute( 'position', new Float32BufferAttribute( geometry.vertices, 3 ) );
+				if ( geometry.edgeFlags ) buffergeometry.userData.edgeFlags = Uint8Array.from( geometry.edgeFlags ); // MonView
 
 				if ( geometry.normals.length > 0 ) {
 

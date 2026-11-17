@@ -1,12 +1,10 @@
 {
-  "version": "1.1.1",
-  "date": "2026-11-14",
-  "new": [
-    "Xem 3D có 3 chế độ: Lit, Lit + Wire, Wire (nút góc trên bên trái, hoặc phím W để chuyển)",
-    "Cài đặt → Xem 3D: chọn chế độ xem mặc định, màu lưới và độ dày lưới"
-  ],
+  "version": "1.1.2",
+  "date": "2026-11-17",
+  "new": [],
   "improved": [
-    "Lưới wireframe chỉnh được độ dày (mặc định đen, 1.2 px) và chạy theo animation của nhân vật có xương"
+    "Lưới wireframe giữ đúng mặt gốc của model: FBX và OBJ hiện đúng tứ giác / đa giác như lúc dựng, không còn đường chéo tam giác tự thêm",
+    "GLB/GLTF (định dạng chỉ lưu tam giác): tự ghép lại các cặp tam giác thành tứ giác cho lưới gọn hơn"
   ],
   "fixed": []
 }
