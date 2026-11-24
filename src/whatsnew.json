@@ -1,10 +1,14 @@
 {
-  "version": "1.1.2",
-  "date": "2026-11-17",
-  "new": [],
+  "version": "1.2.0",
+  "date": "2026-11-24",
+  "new": [
+    "Chuyển đổi model 3D qua lại giữa GLB, FBX và OBJ: nút \"Chuyển đổi\" khi xem 3D, hoặc chuột phải → \"Lưu sang …\"",
+    "File mới lưu cạnh file gốc, cùng tên (trùng thì thêm _1, _2…)",
+    "FBX và OBJ xuất ra giữ đúng mặt tứ giác/đa giác gốc; FBX và GLB giữ xương, animation và texture (texture được nhúng trong file)",
+    "OBJ xuất kèm file .mtl và ảnh texture .png"
+  ],
   "improved": [
-    "Lưới wireframe giữ đúng mặt gốc của model: FBX và OBJ hiện đúng tứ giác / đa giác như lúc dựng, không còn đường chéo tam giác tự thêm",
-    "GLB/GLTF (định dạng chỉ lưu tam giác): tự ghép lại các cặp tam giác thành tứ giác cho lưới gọn hơn"
+    "Phần chuyển đổi chỉ nạp khi bấm, không làm chậm lúc mở app"
   ],
   "fixed": []
 }

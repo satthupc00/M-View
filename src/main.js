@@ -226,6 +226,18 @@ ipcMain.handle('open-dialog', async e => {
   });
   return r.canceled ? null : r.filePaths[0];
 });
+// ---- Chuyển đổi model 3D: lưu cạnh file gốc, trùng tên thì thêm _1, _2…
+ipcMain.handle('convert-base', (_e, src, ext) => {
+  const dir = path.dirname(src), name = path.basename(src, path.extname(src));
+  const taken = b => fs.existsSync(path.join(dir, `${b}.${ext}`)) || (ext === 'obj' && fs.existsSync(path.join(dir, `${b}.mtl`)));
+  let base = name, n = 0;
+  while (taken(base)) base = `${name}_${++n}`;
+  return { dir, base };
+});
+ipcMain.handle('write-files', async (_e, dir, files) => {
+  for (const f of files) await fsp.writeFile(path.join(dir, path.basename(f.name)), Buffer.from(f.data));
+  return path.join(dir, path.basename(files[0].name));
+});
 ipcMain.handle('whatsnew', async () => JSON.parse(await fsp.readFile(path.join(__dirname, 'whatsnew.json'), 'utf8')));
 
 // ---- App mặc định (Windows 10 chỉ cho người dùng tự chọn) ----

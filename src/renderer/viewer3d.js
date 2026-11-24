@@ -10,6 +10,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { TGALoader } from 'three/addons/loaders/TGALoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { quadFlags } from './topology.js';
 
 export function createViewer(container, mv) {
   const canvas = document.createElement('canvas');
@@ -206,52 +207,6 @@ export function createViewer(container, mv) {
   // Cờ cạnh gốc cho mỗi tam giác (bit0 = v0-v1, bit1 = v1-v2, bit2 = v2-v0; 1 = cạnh thật của mặt gốc).
   // FBX/OBJ: loader đã ghi lại từ mặt tứ giác/đa giác gốc. GLB/GLTF chỉ lưu tam giác: ghép lại thành tứ giác
   // giống "Tris to Quads" (cặp tam giác gần phẳng, dùng chung cạnh dài nhất của cả hai).
-  function quadFlags(g) {
-    const pos = g.attributes.position, idx = g.index;
-    const tri = (idx ? idx.count : pos.count) / 3 | 0;
-    const vid = i => (idx ? idx.getX(i) : i);
-    // gộp đỉnh trùng vị trí (glTF tách đỉnh ở đường nối UV)
-    const weld = new Map(), wid = new Int32Array(pos.count);
-    const q = v => Math.round(v * 1e5);
-    for (let i = 0; i < pos.count; i++) {
-      const k = q(pos.getX(i)) + ',' + q(pos.getY(i)) + ',' + q(pos.getZ(i));
-      let w = weld.get(k); if (w === undefined) { w = weld.size; weld.set(k, w); } wid[i] = w;
-    }
-    const flags = new Uint8Array(tri).fill(7);
-    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
-    const nrm = new Float32Array(tri * 3), longest = new Int8Array(tri);
-    const edges = new Map();
-    for (let t = 0; t < tri; t++) {
-      const v = [vid(t * 3), vid(t * 3 + 1), vid(t * 3 + 2)];
-      A.fromBufferAttribute(pos, v[0]); B.fromBufferAttribute(pos, v[1]); C.fromBufferAttribute(pos, v[2]);
-      const l = [A.distanceToSquared(B), B.distanceToSquared(C), C.distanceToSquared(A)];
-      longest[t] = l[0] >= l[1] && l[0] >= l[2] ? 0 : l[1] >= l[2] ? 1 : 2;
-      const n = C.clone().sub(B).cross(A.clone().sub(B)).normalize();
-      nrm[t * 3] = n.x; nrm[t * 3 + 1] = n.y; nrm[t * 3 + 2] = n.z;
-      for (let e = 0; e < 3; e++) {
-        const a = wid[v[e]], b = wid[v[(e + 1) % 3]];
-        const k = a < b ? a + '_' + b : b + '_' + a;
-        const list = edges.get(k); if (list) list.push(t * 3 + e); else edges.set(k, [t * 3 + e]);
-      }
-    }
-    const cand = [];
-    for (const list of edges.values()) {
-      if (list.length !== 2) continue;
-      const [x, y] = list, t1 = x / 3 | 0, t2 = y / 3 | 0;
-      if (t1 === t2 || longest[t1] !== x % 3 || longest[t2] !== y % 3) continue;
-      const d = nrm[t1 * 3] * nrm[t2 * 3] + nrm[t1 * 3 + 1] * nrm[t2 * 3 + 1] + nrm[t1 * 3 + 2] * nrm[t2 * 3 + 2];
-      if (d > 0.82) cand.push([d, x, y]); // lệch dưới ~35°
-    }
-    cand.sort((a, b) => b[0] - a[0]);
-    const used = new Uint8Array(tri);
-    for (const [, x, y] of cand) {
-      const t1 = x / 3 | 0, t2 = y / 3 | 0;
-      if (used[t1] || used[t2]) continue;
-      used[t1] = used[t2] = 1;
-      flags[t1] &= ~(1 << (x % 3)); flags[t2] &= ~(1 << (y % 3));
-    }
-    return flags;
-  }
   function baryGeometry(g) {
     const tri = (g.index ? g.index.count : g.attributes.position.count) / 3 | 0;
     let flags = g.userData.edgeFlags;
@@ -317,10 +272,29 @@ export function createViewer(container, mv) {
     tween = { t0: performance.now(), dur: 220, p0: camera.position.clone(), p1: controls.target.clone().add(off), c0: controls.target.clone(), c1: controls.target.clone() };
   }
 
+  // Chuẩn bị xuất file: dừng animation (về tư thế gốc), ẩn lớp lưới, trả lại vật liệu bình thường
+  function forExport() {
+    const wasPlaying = playing, at = cur;
+    playing = false; mixer?.stopAllAction();
+    const vis = []; overlays.forEach(ov => { vis.push([ov, ov.visible]); ov.visible = false; });
+    const mats = [];
+    root.traverse(o => { if (o.isMesh && !o.userData.isWire) for (const m of [].concat(o.material || [])) { mats.push([m, m.colorWrite, m.depthWrite]); m.colorWrite = true; m.depthWrite = true; } });
+    root.updateMatrixWorld(true);
+    return {
+      root, clips: actions.map(a => a.getClip()),
+      restore() {
+        vis.forEach(([o, v]) => { o.visible = v; });
+        mats.forEach(([m, c, d]) => { m.colorWrite = c; m.depthWrite = d; });
+        if (actions.length) { play(at < 0 ? 0 : at); playing = wasPlaying; }
+        dirty = true; emit();
+      }
+    };
+  }
+
   function snapshot() { renderer.render(scene, camera); return canvas.toDataURL('image/png'); }
 
   return {
-    load, frame, zoom, setView, setWireStyle, setGrid, setBg, play, togglePlay, seek, snapshot,
+    load, frame, zoom, forExport, setView, setWireStyle, setGrid, setBg, play, togglePlay, seek, snapshot,
     get view() { return viewMode; }, get grid() { return showGrid; },
     get clips() { return actions.map(a => ({ name: a.getClip().name || 'Animation', duration: a.getClip().duration })); },
     get current() { return cur; }, get playing() { return playing; },

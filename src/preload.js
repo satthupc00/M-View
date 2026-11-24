@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('mv', {
   trash: f => call('trash', f),
   newWindow: f => call('new-window', f),
   closeWindow: () => call('close-window'),
+  convertBase: (src, ext) => call('convert-base', src, ext),
+  writeFiles: (dir, files) => call('write-files', dir, files),
   fullscreen: on => call('fullscreen', on),
   openDialog: () => call('open-dialog'),
   whatsNew: () => call('whatsnew'),

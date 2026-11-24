@@ -197,3 +197,11 @@ body.is3d #bAlpha,body.is3d .rotbtns{display:none}
 .wrow{display:flex;align-items:center;gap:10px}
 .wrow input[type=range]{max-width:200px}
 .wrow .val{font-variant-numeric:tabular-nums;color:var(--muted);min-width:44px;text-align:right}
+.btn2.sm{padding:3px 9px;font-size:12px;font-weight:600}
+.convwrap{position:relative}
+.convmenu{position:absolute;left:0;top:calc(100% + 6px);min-width:170px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 12px 32px rgba(0,0,0,.5);animation:popin .16s var(--ease-out);z-index:5}
+.convmenu button{display:flex;width:100%;align-items:center;gap:8px;background:none;border:0;padding:6px 10px;border-radius:5px;cursor:pointer;text-align:left;color:var(--text)}
+.convmenu button:hover{background:var(--hover);box-shadow:inset 3px 0 0 var(--red)}
+.convmenu .tag{margin-left:auto}
+.convmenu .hint{font-size:11px;color:var(--muted)}
+.v3dtools.busy #b3Conv{pointer-events:none;opacity:.6}

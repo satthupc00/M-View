@@ -240,6 +240,40 @@ function setWireStyle(p) { Object.assign(S, p); mv.setSettings(p); v3?.setWireSt
 $('#b3Grid').onclick = () => { v3.setGrid(!v3.grid); $('#b3Grid').classList.toggle('on', v3.grid); };
 $('#b3Frame').onclick = () => v3.frame(true);
 
+// ---- chuyển đổi định dạng 3D (module chỉ nạp khi dùng)
+const CONV = { glb: 'Giữ xương + animation', fbx: 'Giữ mặt gốc, xương + animation', obj: 'Chỉ mesh + texture' };
+const srcFmt = () => { const e = extOf(file); return e === 'gltf' ? 'glb' : e; };
+function convTargets() { return Object.keys(CONV).filter(t => t !== srcFmt()); }
+$('#b3Conv').onclick = e => {
+  e.stopPropagation();
+  const m = $('#convMenu');
+  if (!m.hidden) { m.hidden = true; return; }
+  m.innerHTML = convTargets().map(t => `<button data-t="${t}">Lưu sang <b>${t.toUpperCase()}</b><span class="hint">${CONV[t]}</span></button>`).join('');
+  m.hidden = false;
+};
+$('#convMenu').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { $('#convMenu').hidden = true; convert3d(b.dataset.t); } };
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.convwrap')) $('#convMenu').hidden = true; });
+let converting = false;
+async function convert3d(target) {
+  if (!is3D || !m3 || converting) return;
+  converting = true; $('.v3dtools').classList.add('busy');
+  toast(`Đang lưu sang ${target.toUpperCase()}…`);
+  const src = file, prep = v3.forExport();
+  try {
+    const { convert } = await import('./convert3d.js');
+    const { dir, base } = await mv.convertBase(src, target);
+    const files = await convert(prep, target, extOf(src), base);
+    const out = await mv.writeFiles(dir, files);
+    if (list.length) list = await mv.listDir(src), idx = list.findIndex(x => x.toLowerCase() === src.toLowerCase()), renderHeader();
+    toast(`Đã lưu ${baseName(out)}${files.length > 1 ? ` (+${files.length - 1} file kèm)` : ''}`);
+  } catch (err) {
+    console.error(err);
+    toast(`Không lưu được sang ${target.toUpperCase()}: ${String(err && err.message || err).slice(0, 120)}`);
+  } finally {
+    prep.restore(); converting = false; $('.v3dtools').classList.remove('busy');
+  }
+}
+
 async function openFile(p) {
   const same = list.findIndex(x => x.toLowerCase() === p.toLowerCase());
   if (same < 0) {
@@ -387,6 +421,8 @@ function openCtx(x, y) {
     it('view', 'grid', `Chế độ xem: ${VIEWS[S.view3d]}`, 'W'),
     it('grid3', 'grid', `${v3.grid ? 'Ẩn' : 'Hiện'} lưới sàn`, 'G'),
     ...(v3.clips.length ? [it('play', 'rot', v3.playing ? 'Dừng animation' : 'Phát animation', 'Space')] : []),
+    '<hr>',
+    ...convTargets().map(t => it('conv-' + t, 'copy', `Lưu sang ${t.toUpperCase()}`, '')),
     '<hr>'] : null;
   ctxEl.innerHTML = [
     it('open', 'open', 'Mở ảnh…', 'Ctrl+O'),
@@ -432,6 +468,9 @@ function run(a) {
     case 'rotl': return rotate(-90);
     case 'alpha': return setAlpha(!S.alpha);
     case 'view': return cycleView3d();
+    case 'conv-glb': return convert3d('glb');
+    case 'conv-fbx': return convert3d('fbx');
+    case 'conv-obj': return convert3d('obj');
     case 'grid3': return $('#b3Grid').click();
     case 'play': return v3?.togglePlay();
     case 'copy': return copyImage();

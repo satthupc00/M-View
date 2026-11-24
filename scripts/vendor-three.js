@@ -7,7 +7,7 @@ const FILES = [
   'LICENSE', 'build/three.module.js', 'build/three.core.js',
   'examples/jsm/controls/OrbitControls.js', 'examples/jsm/environments/RoomEnvironment.js',
   'examples/jsm/loaders/FBXLoader.js', 'examples/jsm/loaders/OBJLoader.js', 'examples/jsm/loaders/MTLLoader.js',
-  'examples/jsm/loaders/GLTFLoader.js', 'examples/jsm/loaders/DRACOLoader.js', 'examples/jsm/loaders/TGALoader.js',
+  'examples/jsm/loaders/GLTFLoader.js', 'examples/jsm/exporters/GLTFExporter.js', 'examples/jsm/loaders/DRACOLoader.js', 'examples/jsm/loaders/TGALoader.js',
   'examples/jsm/curves/NURBSCurve.js', 'examples/jsm/curves/NURBSUtils.js',
   'examples/jsm/libs/fflate.module.js', 'examples/jsm/libs/meshopt_decoder.module.js',
   'examples/jsm/utils/BufferGeometryUtils.js', 'examples/jsm/utils/SkeletonUtils.js',
@@ -34,6 +34,46 @@ const PATCHES = {
 for (const [f, list] of Object.entries(PATCHES)) {
   const d = path.join(OUT, f); let s = fs.readFileSync(d, 'utf8');
   for (const [a, b] of list) { if (!s.includes(a)) throw new Error('patch not found in ' + f + ': ' + a.slice(0, 60)); s = s.replace(a, b); }
+  fs.writeFileSync(d, s);
+}
+// ---- Trình ghi FBX (@comfyorg/fbx-exporter-three, MIT) + vá để giữ mặt tứ giác/đa giác gốc và gộp đỉnh trùng.
+// Khi geometry.userData.fbxTopo có mặt: { cp: toạ độ control point, loopCp/loopVert: mỗi góc → control point / đỉnh gốc,
+// polyStarts: chỉ số góc bắt đầu mỗi mặt, polyFirstTri: tam giác đầu của mỗi mặt (lấy vật liệu), cpVert: đỉnh đại diện của mỗi control point }
+const FX_SRC = path.join(__dirname, '..', 'node_modules', '@comfyorg', 'fbx-exporter-three');
+const FX_OUT = path.join(__dirname, '..', 'src', 'renderer', 'vendor', 'fbx-exporter');
+fs.rmSync(FX_OUT, { recursive: true, force: true });
+(function copy(dir, out) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const s = path.join(dir, e.name), d = path.join(out, e.name);
+    if (e.isDirectory()) copy(s, d);
+    else if (e.name.endsWith('.js')) { fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(d, fs.readFileSync(s, 'utf8').replace(/\n\/\/# sourceMappingURL=.*$/, '\n')); }
+  }
+})(path.join(FX_SRC, 'dist'), FX_OUT);
+fs.copyFileSync(path.join(FX_SRC, 'LICENSE'), path.join(FX_OUT, 'LICENSE'));
+const FX_PATCHES = {
+  'builders/objects/geometry.js': [
+    ['function attributeToPerLoop(geometry, attr, itemSize) {\n',
+     'function attributeToPerLoop(geometry, attr, itemSize) {\n    const topo = geometry.userData && geometry.userData.fbxTopo; // MonView\n    if (topo) { const src = readAttributeFlat(attr, itemSize), lv = topo.loopVert, out = new Float32Array(lv.length * itemSize); for (let i = 0; i < lv.length; i++) for (let k = 0; k < itemSize; k++) out[i * itemSize + k] = src[lv[i] * itemSize + k]; return out; }\n'],
+    ["    const posFlat = readAttributeFlat(pos, 3);\n", "    const topo = geometry.userData && geometry.userData.fbxTopo; // MonView\n    const posFlat = topo ? topo.cp : readAttributeFlat(pos, 3);\n"],
+    ["    const t_lvi = loopVertexIndices(geometry);\n    const t_ls = polygonLoopStarts(t_lvi.length);\n",
+     "    const t_lvi = topo ? Int32Array.from(topo.loopCp) : loopVertexIndices(geometry);\n    const t_ls = topo ? topo.polyStarts : polygonLoopStarts(t_lvi.length);\n"],
+    ["    for (const g of groups) {\n        const polyStart = Math.floor(g.start / 3);\n        const polyCount = Math.floor(g.count / 3);\n        const fbxIdx = remapAt(g.materialIndex);\n        for (let i = 0; i < polyCount; i++)\n            t_pm[polyStart + i] = fbxIdx;\n    }\n",
+     "    const topo = geometry.userData && geometry.userData.fbxTopo; // MonView\n    const triMat = topo ? new Int32Array(numPolys) : t_pm;\n    for (const g of groups) {\n        const polyStart = Math.floor(g.start / 3);\n        const polyCount = Math.floor(g.count / 3);\n        const fbxIdx = remapAt(g.materialIndex);\n        for (let i = 0; i < polyCount; i++)\n            triMat[polyStart + i] = fbxIdx;\n    }\n    if (topo) { const out = new Int32Array(topo.polyStarts.length); for (let p = 0; p < out.length; p++) out[p] = triMat[topo.polyFirstTri[p]] || 0; elemDataSingleString(layer, 'MappingInformationType', 'ByPolygon'); elemDataSingleString(layer, 'ReferenceInformationType', 'IndexToDirect'); elemDataSingleInt32Array(layer, 'Materials', out); return; }\n"]
+  ],
+  'data/SceneCollector.js': [
+    ["    const count = idxAttr.count;\n    const indices = [];\n    const weights = [];\n    for (let v = 0; v < count; v++) {\n",
+     "    const topo = geometry.userData && geometry.userData.fbxTopo; // MonView: trọng số theo control point\n    const count = topo ? topo.cpVert.length : idxAttr.count;\n    const indices = [];\n    const weights = [];\n    for (let cpi = 0; cpi < count; cpi++) {\n        const v = topo ? topo.cpVert[cpi] : cpi;\n"],
+    ["            if (w > 0) {\n                indices.push(v);\n", "            if (w > 0) {\n                indices.push(cpi);\n"]
+  ],
+  'data/morphCollector.js': [
+    ["    const base = geom.attributes.position;\n",
+     "    const topo = geom.userData && geom.userData.fbxTopo; // MonView\n    const remapTopo = a => { if (!topo) return a; const n = topo.cpVert.length, o = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const v = topo.cpVert[i]; o[i * 3] = a.getX(v); o[i * 3 + 1] = a.getY(v); o[i * 3 + 2] = a.getZ(v); } return { count: n, array: o, itemSize: 3, getX: i => o[i * 3], getY: i => o[i * 3 + 1], getZ: i => o[i * 3 + 2] }; };\n    const base = remapTopo(geom.attributes.position);\n"],
+    ["        const attr = morphPos[i];\n", "        const attr = remapTopo(morphPos[i]);\n"]
+  ]
+};
+for (const [f, list] of Object.entries(FX_PATCHES)) {
+  const d = path.join(FX_OUT, f); let s = fs.readFileSync(d, 'utf8');
+  for (const [a, b] of list) { if (!s.includes(a)) throw new Error('patch not found in ' + f + ': ' + a.slice(0, 70)); s = s.replace(a, b); }
   fs.writeFileSync(d, s);
 }
 console.log('vendored', FILES.length, 'files from three', require(path.join(SRC, 'package.json')).version);

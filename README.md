@@ -1,7 +1,7 @@
 # Mon View
 
 Trình xem ảnh nhanh cho Windows: PNG, JPG, GIF (cả GIF động), WEBP, ICO, BMP, PSD, PSB, TGA, TIFF.
-Xem được model 3D: FBX, OBJ, GLB, GLTF (texture + animation).
+Xem được model 3D: FBX, OBJ, GLB, GLTF (texture + animation), và chuyển đổi qua lại giữa GLB, FBX, OBJ.
 
 **Tải về:** vào [Releases](https://github.com/satthupc00/M-View/releases/latest), tải `MonView-Setup-x.y.z.exe` rồi chạy. App tự báo khi có bản mới.
 

@@ -2,9 +2,9 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' mview: data: blob:; connect-src 'self' mview: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval' 'sha256-UIiVg22PC4ABTdJ22WSTrliOLGvfsog+qnGKL+MGxbk='; worker-src 'self' blob:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' mview: data: blob:; connect-src 'self' mview: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval' 'sha256-AFW+qhoq9j2eoh4uQZ232MhmuoQKKGLgsiI18s7O3gc='; worker-src 'self' blob:">
 <!-- Three.js cho trình xem 3D: chỉ tải khi mở file 3D. Sửa nội dung thì phải cập nhật mã sha256 trong CSP -->
-<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/","fflate":"./vendor/three/examples/jsm/libs/fflate.module.js","@comfyorg/fbx-exporter-three":"./vendor/fbx-exporter/index.js"}}</script>
 <title>Mon View</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -43,6 +43,9 @@
         </div>
         <span class="sep"></span>
         <button class="ibtn sm on" id="b3Grid" title="Lưới sàn (G)" aria-label="Lưới sàn"><svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
+        <span class="sep"></span>
+        <div class="convwrap"><button class="btn2 sm" id="b3Conv" title="Chuyển đổi sang định dạng khác"><svg viewBox="0 0 24 24"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg>Chuyển đổi</button>
+          <div class="convmenu" id="convMenu" hidden></div></div>
         <button class="ibtn sm" id="b3Frame" title="Vừa khung (F)" aria-label="Vừa khung"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       </div>
       <div class="animbar" id="animbar" hidden>

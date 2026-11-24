@@ -1,7 +1,7 @@
 {
   "name": "mon-view",
   "productName": "Mon View",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Mon View - xem ảnh nhanh",
   "author": "Mondiro",
   "license": "UNLICENSED",
@@ -13,6 +13,7 @@
     "release": "electron-builder --win --x64 --publish always"
   },
   "devDependencies": {
+    "@comfyorg/fbx-exporter-three": "^1.0.2",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
     "three": "^0.186.1"
