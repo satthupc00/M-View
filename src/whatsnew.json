@@ -1,14 +1,17 @@
 {
-  "version": "1.2.0",
-  "date": "2026-11-24",
+  "version": "1.2.1",
+  "date": "2026-11-25",
   "new": [
-    "Chuyển đổi model 3D qua lại giữa GLB, FBX và OBJ: nút \"Chuyển đổi\" khi xem 3D, hoặc chuột phải → \"Lưu sang …\"",
-    "File mới lưu cạnh file gốc, cùng tên (trùng thì thêm _1, _2…)",
-    "FBX và OBJ xuất ra giữ đúng mặt tứ giác/đa giác gốc; FBX và GLB giữ xương, animation và texture (texture được nhúng trong file)",
-    "OBJ xuất kèm file .mtl và ảnh texture .png"
+    "Thanh tiến trình khi mở model nặng: đang đọc file (MB và %), đang dựng model, đang tải texture",
+    "Chế độ xem 3D mới: Lit, Unlit (màu phẳng, không đổ bóng), Wire; nút \"+ Lưới\" (phím Q) để phủ lưới lên Lit hoặc Unlit",
+    "Cài đặt → Xem 3D → Màu model: chọn màu cho model (mặc định xám sáng dễ nhìn) hoặc \"Màu gốc\" theo file"
   ],
   "improved": [
-    "Phần chuyển đổi chỉ nạp khi bấm, không làm chậm lúc mở app"
+    "Phần có texture luôn hiện đúng màu texture, không bị pha màu vật liệu",
+    "PSD/PSB/TIFF nặng cũng hiện bảng \"Đang đọc…\" khi mở",
+    "Mở file khác trong lúc model đang tải sẽ huỷ lượt tải cũ ngay"
   ],
-  "fixed": []
+  "fixed": [
+    "Model sau khi chuyển đổi hiện màu nâu tối khó nhìn"
+  ]
 }

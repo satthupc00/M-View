@@ -4,8 +4,9 @@ const stage = $('#stage'), wrap = $('#wrap');
 const BGS = ['#2B2D31', '#1F2126', '#000000', '#808080', '#FFFFFF', '#E8E2D6'];
 const NAMES = { jpg: 'JPG', jpeg: 'JPG', jfif: 'JPG', tif: 'TIFF', tiff: 'TIFF' };
 
-const S = { bg: BGS[0], alpha: true, upscale: false, pixel: true, view3d: 'lit', wireColor: '#000000', wireWidth: 1.2 };
-const VIEWS = { lit: 'Lit', litwire: 'Lit + Wire', wire: 'Wire' };
+const S = { bg: BGS[0], alpha: true, upscale: false, pixel: true, view3d: 'lit', overlay3d: false, modelColor: '#A9AEB8', wireColor: '#000000', wireWidth: 1.2 };
+const VIEWS = { lit: 'Lit', unlit: 'Unlit', wire: 'Wire' };
+const MODEL_COLORS = ['#A9AEB8', '#FFFFFF', '#8D929C', '#E8C39E', '#7FB2FF', '#E5383B'];
 const WIRE_COLORS = ['#000000', '#FFFFFF', '#E5383B', '#3D9BFF', '#3DDC8A', '#F2B84B'];
 let list = [], idx = -1, file = null, info = null, dec = null;
 let el = null, iw = 0, ih = 0, rot = 0, rotAcc = 0, scale = 1, tx = 0, ty = 0, mode = 'fit', token = 0;
@@ -154,13 +155,14 @@ async function load(p) {
   const my = ++token;
   file = p; info = null;
   if (is3D && !MODELS.includes(extOf(p))) v3.stop(); // rời 3D: dừng vẽ ngay để ảnh mới hiện nhanh
-  const ldT = setTimeout(() => { if (my === token) $('#loading').hidden = false; }, 150);
+  const ldT = setTimeout(() => { if (my === token && $('#prog').hidden) $('#loading').hidden = false; }, 150);
   renderHeader();
   try {
     info = await mv.fileInfo(p);
     if (info.model) { await show3D(p, my); return; }
     let node, d = null;
     if (info.decoded) {
+      progT = setTimeout(() => { if (my === token) showProg(`Đang đọc ${extOf(p).toUpperCase()}…`, null, info.size > 1048576 ? mb(info.size) : ''); }, 300);
       d = await mv.decode(p);
       if (my !== token) return;
       node = document.createElement('canvas'); node.width = d.width; node.height = d.height;
@@ -179,8 +181,8 @@ async function load(p) {
     layoutEl(); setFit(false);
     preloadNeighbors();
   } catch (err) {
-    if (my !== token) return;
-    leave3D();
+    if (my !== token || String(err?.message).includes('CANCELLED')) return;
+    hideProg(); leave3D();
     el = null; dec = null; iw = ih = 0; wrap.replaceChildren(); wrap.hidden = true;
     const m = String(err && err.message || err);
     if (m.includes('NO_COMPOSITE')) showMsg('File này không lưu ảnh gộp', 'Trong Photoshop bật "Maximize PSD and PSB File Compatibility" rồi lưu lại file.');
@@ -189,8 +191,25 @@ async function load(p) {
     renderMeta();
   } finally {
     clearTimeout(ldT);
-    if (my === token) { $('#loading').hidden = true; renderHeader(); }
+    if (my === token) { $('#loading').hidden = true; hideProg(); renderHeader(); }
   }
+}
+
+/* ---------- thanh tiến trình ---------- */
+let progT = 0;
+const mb = n => (n / 1048576).toFixed(n > 1048576 * 100 ? 0 : 1) + ' MB';
+function showProg(title, frac = null, detail = '') {
+  clearTimeout(progT); $('#loading').hidden = true;
+  const p = $('#prog'); p.hidden = false;
+  $('#progT').textContent = title; $('#progD').textContent = detail;
+  const bar = $('#progBar'); bar.classList.toggle('ind', frac == null);
+  if (frac != null) bar.style.setProperty('--p', Math.max(0, Math.min(1, frac)));
+}
+function hideProg() { clearTimeout(progT); $('#prog').hidden = true; }
+function prog3d({ phase, frac, loaded, total }) {
+  if (phase === 'read') showProg('Đang đọc file…', frac, total ? `${mb(loaded)} / ${mb(total)} · ${Math.round(frac * 100)}%` : mb(loaded));
+  else if (phase === 'parse') showProg('Đang dựng model…', null, 'Model nặng có thể mất vài giây');
+  else if (phase === 'tex') showProg('Đang tải texture…', frac, total ? `${loaded} / ${total}` : '');
 }
 
 /* ---------- 3D ---------- */
@@ -199,13 +218,15 @@ function getViewer() {
   return v3Promise;
 }
 async function show3D(p, my) {
+  if (!v3) showProg('Đang chuẩn bị trình xem 3D…');
   const v = await getViewer();
   if (my !== token) return;
   is3D = true; document.body.classList.add('is3d'); $('#v3d').hidden = false;
   el = null; dec = null; wrap.replaceChildren(); showMsg(null);
-  v.setBg(S.bg); v.setWireStyle({ color: S.wireColor, width: S.wireWidth }); v.setView(S.view3d); v.show();
+  v.setBg(S.bg); v.setWireStyle({ color: S.wireColor, width: S.wireWidth }); v.setModelColor(S.modelColor); v.setOverlay(S.overlay3d); v.setView(S.view3d); v.show();
   m3 = null; animKey = '';
-  m3 = await v.load(p);
+  m3 = await v.load(p, { size: info?.size, onProgress: prog3d });
+  hideProg();
   if (my !== token) return;
   markView(); $('#b3Grid').classList.toggle('on', v.grid);
   renderAnim(); renderMeta();
@@ -232,7 +253,13 @@ function renderAnim() {
 $('#b3Play').onclick = () => v3?.togglePlay();
 $('#s3Clip').onchange = e => v3?.play(+e.target.value);
 $('#r3Time').oninput = e => { if (v3.playing) v3.togglePlay(); v3.seek(+e.target.value); };
-function markView() { document.querySelectorAll('#seg3 button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view3d)); }
+function markView() {
+  document.querySelectorAll('#seg3 button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view3d));
+  $('#b3Ov').classList.toggle('on', S.overlay3d); $('#b3Ov').disabled = S.view3d === 'wire';
+}
+function setOverlay3d(v) { S.overlay3d = v; mv.setSettings({ overlay3d: v }); v3?.setOverlay(v); markView(); }
+$('#b3Ov').onclick = () => setOverlay3d(!S.overlay3d);
+function setModelColor(c) { S.modelColor = c; mv.setSettings({ modelColor: c }); v3?.setModelColor(c); }
 function setView3d(mode) { S.view3d = mode; mv.setSettings({ view3d: mode }); v3?.setView(mode); markView(); }
 function cycleView3d() { const k = Object.keys(VIEWS); setView3d(k[(k.indexOf(S.view3d) + 1) % k.length]); }
 $('#seg3').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView3d(b.dataset.v); };
@@ -419,6 +446,7 @@ function openCtx(x, y) {
     it('fit', 'fit', 'Vừa khung', 'F', true),
     it('fs', 'fs', document.body.classList.contains('fs') ? 'Thoát toàn màn hình' : 'Toàn màn hình', 'Chuột giữa'),
     it('view', 'grid', `Chế độ xem: ${VIEWS[S.view3d]}`, 'W'),
+    it('ov', 'grid', `${S.overlay3d ? 'Bỏ' : 'Phủ'} lưới lên model`, 'Q', S.view3d !== 'wire'),
     it('grid3', 'grid', `${v3.grid ? 'Ẩn' : 'Hiện'} lưới sàn`, 'G'),
     ...(v3.clips.length ? [it('play', 'rot', v3.playing ? 'Dừng animation' : 'Phát animation', 'Space')] : []),
     '<hr>',
@@ -468,6 +496,7 @@ function run(a) {
     case 'rotl': return rotate(-90);
     case 'alpha': return setAlpha(!S.alpha);
     case 'view': return cycleView3d();
+    case 'ov': return setOverlay3d(!S.overlay3d);
     case 'conv-glb': return convert3d('glb');
     case 'conv-fbx': return convert3d('fbx');
     case 'conv-obj': return convert3d('obj');
@@ -515,6 +544,8 @@ function openSettings() {
     </section>
     <section><h4>Xem 3D</h4>
       <div class="row"><span class="grow">Chế độ xem mặc định</span><div class="seg" id="sView">${Object.entries(VIEWS).map(([k, n]) => `<button data-v="${k}" class="${k === S.view3d ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+      <label class="row"><input type="checkbox" id="sOv" ${S.overlay3d ? 'checked' : ''}><span class="grow">Phủ lưới lên model</span><kbd>Q</kbd></label>
+      <div class="row"><span class="grow">Màu model <span class="note">(phần có texture luôn hiện màu texture)</span></span><div class="swo"><button class="chip3 ${S.modelColor === 'orig' ? 'on' : ''}" id="sMcOrig">Màu gốc</button><div class="sw" id="sMcSw">${MODEL_COLORS.map(c => `<i style="background:${c}" class="${c.toLowerCase() === String(S.modelColor).toLowerCase() ? 'on' : ''}" data-mc="${c}" title="${c}"></i>`).join('')}</div></div><input type="color" id="sMcPick" value="${S.modelColor === 'orig' ? '#A9AEB8' : S.modelColor}" title="Chọn màu khác"></div>
       <div class="row"><span class="grow">Màu lưới</span><div class="sw" id="sWireSw">${WIRE_COLORS.map(c => `<i style="background:${c}" class="${c.toLowerCase() === S.wireColor.toLowerCase() ? 'on' : ''}" data-wc="${c}" title="${c}"></i>`).join('')}</div><input type="color" id="sWirePick" value="${S.wireColor}" title="Chọn màu khác"></div>
       <div class="row"><span class="grow">Độ dày lưới</span><div class="wrow"><input type="range" id="sWireW" min="0.5" max="4" step="0.1" value="${S.wireWidth}"><span class="val" id="sWireWv">${(+S.wireWidth).toFixed(1)} px</span></div></div>
     </section>
@@ -525,6 +556,10 @@ function openSettings() {
     </section>`, (e, v) => {
     const c = e.target.closest('[data-c]');
     if (c) { setBg(c.dataset.c); v.querySelectorAll('#sSw i').forEach(i => i.classList.toggle('on', i === c)); v.querySelector('#sPick').value = c.dataset.c; return; }
+    const mc = e.target.closest('[data-mc]');
+    const markMc = on => { v.querySelectorAll('#sMcSw i').forEach(i => i.classList.toggle('on', i === on)); v.querySelector('#sMcOrig').classList.toggle('on', !on); };
+    if (mc) { setModelColor(mc.dataset.mc); markMc(mc); v.querySelector('#sMcPick').value = mc.dataset.mc; return; }
+    if (e.target.closest('#sMcOrig')) { setModelColor('orig'); markMc(null); return; }
     const wc = e.target.closest('[data-wc]');
     if (wc) { setWireStyle({ wireColor: wc.dataset.wc }); v.querySelectorAll('#sWireSw i').forEach(i => i.classList.toggle('on', i === wc)); v.querySelector('#sWirePick').value = wc.dataset.wc; return; }
     const vb = e.target.closest('#sView [data-v]');
@@ -537,6 +572,8 @@ function openSettings() {
   });
   v.querySelector('#sPick').oninput = e => { setBg(e.target.value); v.querySelectorAll('#sSw i').forEach(i => i.classList.remove('on')); };
   v.querySelector('#sAlpha').onchange = e => setAlpha(e.target.checked);
+  v.querySelector('#sOv').onchange = e => setOverlay3d(e.target.checked);
+  v.querySelector('#sMcPick').oninput = e => { setModelColor(e.target.value); v.querySelectorAll('#sMcSw i').forEach(i => i.classList.remove('on')); v.querySelector('#sMcOrig').classList.remove('on'); };
   v.querySelector('#sWirePick').oninput = e => { setWireStyle({ wireColor: e.target.value }); v.querySelectorAll('#sWireSw i').forEach(i => i.classList.remove('on')); };
   const ww = v.querySelector('#sWireW');
   const fillW = () => ww.style.setProperty('--fill', ((ww.value - ww.min) / (ww.max - ww.min) * 100) + '%');
@@ -653,6 +690,7 @@ document.addEventListener('keydown', e => {
   if (k === '-' || k === '_' || e.code === 'NumpadSubtract') { e.preventDefault(); zoomAt(1 / 1.25, null, null, true); return; }
   if (is3D && !ctrl) { // phím riêng khi xem 3D
     if (k === 'w' || k === 'W') { cycleView3d(); return; }
+    if (k === 'q' || k === 'Q') { setOverlay3d(!S.overlay3d); return; }
     if (k === 'g' || k === 'G') { $('#b3Grid').click(); return; }
     if (k === ' ') { e.preventDefault(); v3.togglePlay(); return; }
     if (k === 'f' || k === 'F') { v3.frame(true); return; }
@@ -677,6 +715,7 @@ mv.onOpenFile(p => openFile(p));
   const d = await mv.init();
   version = d.version;
   Object.assign(S, d.settings);
+  if (S.view3d === 'litwire') { S.view3d = 'lit'; S.overlay3d = true; } // chế độ cũ (bản 1.1.x)
   stage.style.setProperty('--bg', S.bg); $('#bgDot').style.background = S.bg;
   $('#bAlpha').classList.toggle('on', S.alpha);
   document.body.classList.toggle('fs', d.fullscreen);

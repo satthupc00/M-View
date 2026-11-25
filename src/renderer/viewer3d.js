@@ -40,7 +40,7 @@ export function createViewer(container, mv) {
   controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: null, RIGHT: THREE.MOUSE.PAN };
 
   let grid = null, root = null, mixer = null, actions = [], cur = -1, playing = false;
-  let viewMode = 'lit', showGrid = true, dirty = true, raf = 0, active = false, tween = null;
+  let viewMode = 'lit', overlay = false, modelColor = '#A9AEB8', loadGen = 0, showGrid = true, dirty = true, raf = 0, active = false, tween = null;
   let tPrev = performance.now();
   const delta = () => { const n = performance.now(), d = (n - tPrev) / 1000; tPrev = n; return Math.min(d, 0.1); };
   let lastEmit = 0;
@@ -92,10 +92,11 @@ export function createViewer(container, mv) {
     if (!root) return;
     scene.remove(root);
     overlays.forEach(ov => ov.geometry.dispose()); overlays.clear();
+    dispMats.forEach(e => { e.lit?.dispose(); e.unlit?.dispose(); }); dispMats.clear();
     root.traverse(o => {
       if (o.userData.isWire) return;
       o.geometry?.dispose();
-      for (const m of [].concat(o.material || [])) { for (const k in m) if (m[k]?.isTexture) m[k].dispose(); m.dispose(); }
+      for (const m of [].concat(o.userData.orig || o.material || [])) { for (const k in m) if (m[k]?.isTexture) m[k].dispose(); m.dispose(); }
     });
     root = null; mixer = null; actions = []; cur = -1; playing = false;
   }
@@ -132,18 +133,38 @@ export function createViewer(container, mv) {
     scene.add(grid);
   }
 
-  async function load(path) {
+  const nextPaint = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  // onProgress({ phase: 'read'|'parse'|'tex', frac, loaded, total })
+  async function load(path, { size = 0, onProgress } = {}) {
+    const gen = ++loadGen;
+    const P = (phase, frac = null, extra = {}) => { if (gen === loadGen) onProgress?.({ phase, frac, ...extra }); };
+    const alive = () => { if (gen !== loadGen) throw new Error('CANCELLED'); };
     disposeModel();
     baseDir = mv.dirOf(path);
     const ext = path.split('.').pop().toLowerCase();
+    // 1. đọc file theo từng phần để báo % đã tải
     const res = await fetch(mv.fileUrl(path));
     if (!res.ok) throw new Error('ENOENT');
+    const total = size || +res.headers.get('content-length') || 0;
+    const reader = res.body.getReader(), parts = []; let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read(); if (done) break;
+      parts.push(value); got += value.length; P('read', total ? got / total : null, { loaded: got, total });
+      alive();
+    }
+    const buf = new Uint8Array(got); { let o = 0; for (const c of parts) { buf.set(c, o); o += c.length; } }
+    parts.length = 0;
+    // 2. phân tích model (chặn luồng vẽ một lúc: vẽ thanh tiến trình trước)
+    let texWait = null, texTotal = 0;
+    manager.onStart = () => { texWait ||= new Promise(r => { manager.onLoad = r; }); };
+    manager.onProgress = (_u, loaded, tot) => { texTotal = tot; P('tex', tot ? loaded / tot : null, { loaded, total: tot }); };
+    P('parse'); await nextPaint(); alive();
     let obj, clips = [];
     if (ext === 'fbx') {
-      obj = new FBXLoader(manager).parse(await res.arrayBuffer(), '');
+      obj = new FBXLoader(manager).parse(buf.buffer, '');
       clips = obj.animations || [];
     } else if (ext === 'obj') {
-      const text = await res.text();
+      const text = new TextDecoder().decode(buf);
       const loader = new OBJLoader(manager);
       const lib = (text.match(/^mtllib\s+(.+)$/m) || [])[1]?.trim();
       const mtlPath = [lib && mv.join(baseDir, lib), path.replace(/\.obj$/i, '.mtl')].find(p => p && mv.exists(p));
@@ -154,10 +175,14 @@ export function createViewer(container, mv) {
       obj = loader.parse(text);
     } else {
       const loader = new GLTFLoader(manager).setDRACOLoader(draco).setMeshoptDecoder(MeshoptDecoder);
-      const data = ext === 'glb' ? await res.arrayBuffer() : await res.text();
+      const data = ext === 'glb' ? buf.buffer : new TextDecoder().decode(buf);
       const gltf = await new Promise((ok, fail) => loader.parse(data, '', ok, fail));
       obj = gltf.scene; clips = gltf.animations || [];
     }
+    // 3. chờ texture (tối đa 30 giây)
+    if (texWait) { P('tex', 0, { loaded: 0, total: texTotal }); await Promise.race([texWait, new Promise(r => setTimeout(r, 30000))]); }
+    manager.onStart = manager.onProgress = manager.onLoad = undefined;
+    if (gen !== loadGen) { obj.traverse(o => { o.geometry?.dispose(); [].concat(o.material || []).forEach(m => m.dispose()); }); throw new Error('CANCELLED'); }
     root = obj;
     scene.add(root);
     root.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
@@ -235,15 +260,39 @@ export function createViewer(container, mv) {
     mesh.add(ov); overlays.set(mesh, ov);
     return ov;
   }
+  // Vật liệu hiển thị: bản sao của vật liệu gốc (Lit) hoặc MeshBasicMaterial (Unlit).
+  // Có texture: chỉ hiện màu texture. Không texture: màu model chọn trong Cài đặt (hoặc màu gốc).
+  const dispMats = new Map(); // vật liệu gốc -> { lit, unlit }
+  const WHITE = new THREE.Color(1, 1, 1);
+  function tint(d) {
+    const src = d.userData.src;
+    if (d.map) d.color?.copy(WHITE);
+    else if (modelColor === 'orig') d.color?.copy(src.color || WHITE);
+    else d.color?.set(modelColor);
+  }
+  function display(m, kind) {
+    let e = dispMats.get(m); if (!e) { e = {}; dispMats.set(m, e); }
+    if (!e[kind]) {
+      const d = kind === 'lit' ? m.clone() : new THREE.MeshBasicMaterial({
+        map: m.map || null, alphaMap: m.alphaMap || null, vertexColors: m.vertexColors, transparent: m.transparent,
+        opacity: m.opacity, alphaTest: m.alphaTest, side: m.side
+      });
+      d.userData.src = m; tint(d); e[kind] = d;
+    }
+    return e[kind];
+  }
   function applyView() {
     if (!root) return;
     const meshes = [];
     root.traverse(o => { if (o.isMesh && !o.userData.isWire && !o.isInstancedMesh) meshes.push(o); });
+    const kind = viewMode === 'unlit' ? 'unlit' : 'lit', showWire = viewMode === 'wire' || overlay;
     for (const m of meshes) {
-      const showWire = viewMode !== 'lit';
+      if (!m.userData.orig) m.userData.orig = m.material;
+      const src = m.userData.orig;
+      m.material = Array.isArray(src) ? src.map(x => display(x, kind)) : display(src, kind);
       if (showWire) overlayFor(m).visible = true; else if (overlays.has(m)) overlays.get(m).visible = false;
       // chỉ lưới: ẩn bề mặt nhưng vẫn giữ lớp lưới con
-      for (const mat of [].concat(m.material || [])) {
+      for (const mat of [].concat(m.material)) {
         mat.colorWrite = viewMode !== 'wire'; mat.depthWrite = viewMode !== 'wire';
         mat.polygonOffset = showWire; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 1; mat.needsUpdate = true;
       }
@@ -251,6 +300,8 @@ export function createViewer(container, mv) {
     dirty = true;
   }
   function setView(mode) { viewMode = mode; applyView(); }
+  function setOverlay(v) { overlay = v; applyView(); }
+  function setModelColor(c) { modelColor = c; dispMats.forEach(e => { e.lit && tint(e.lit); e.unlit && tint(e.unlit); }); dirty = true; }
   function setWireStyle({ color, width }) {
     if (color) wireUni.uColor.value.set(color);
     if (width) wireUni.uWidth.value = width * renderer.getPixelRatio() * 0.5; // mỗi cạnh do 2 tam giác chia đôi bề dày
@@ -277,14 +328,13 @@ export function createViewer(container, mv) {
     const wasPlaying = playing, at = cur;
     playing = false; mixer?.stopAllAction();
     const vis = []; overlays.forEach(ov => { vis.push([ov, ov.visible]); ov.visible = false; });
-    const mats = [];
-    root.traverse(o => { if (o.isMesh && !o.userData.isWire) for (const m of [].concat(o.material || [])) { mats.push([m, m.colorWrite, m.depthWrite]); m.colorWrite = true; m.depthWrite = true; } });
+    root.traverse(o => { if (o.isMesh && !o.userData.isWire && o.userData.orig) o.material = o.userData.orig; });
     root.updateMatrixWorld(true);
     return {
       root, clips: actions.map(a => a.getClip()),
       restore() {
         vis.forEach(([o, v]) => { o.visible = v; });
-        mats.forEach(([m, c, d]) => { m.colorWrite = c; m.depthWrite = d; });
+        applyView();
         if (actions.length) { play(at < 0 ? 0 : at); playing = wasPlaying; }
         dirty = true; emit();
       }
@@ -294,15 +344,15 @@ export function createViewer(container, mv) {
   function snapshot() { renderer.render(scene, camera); return canvas.toDataURL('image/png'); }
 
   return {
-    load, frame, zoom, forExport, setView, setWireStyle, setGrid, setBg, play, togglePlay, seek, snapshot,
-    get view() { return viewMode; }, get grid() { return showGrid; },
+    load, frame, zoom, forExport, setView, setOverlay, setModelColor, setWireStyle, setGrid, setBg, play, togglePlay, seek, snapshot,
+    get view() { return viewMode; }, get overlay() { return overlay; }, get grid() { return showGrid; },
     get clips() { return actions.map(a => ({ name: a.getClip().name || 'Animation', duration: a.getClip().duration })); },
     get current() { return cur; }, get playing() { return playing; },
     get time() { return cur >= 0 ? actions[cur].time : 0; },
     onChange: f => listeners.add(f),
     show() { canvas.hidden = false; active = true; resize(); if (!raf) { delta(); loop(); } },
     stop() { cancelAnimationFrame(raf); raf = 0; },
-    hide() { canvas.hidden = true; active = false; cancelAnimationFrame(raf); raf = 0; disposeModel(); },
+    hide() { loadGen++; canvas.hidden = true; active = false; cancelAnimationFrame(raf); raf = 0; disposeModel(); },
     get active() { return active; }
   };
 }

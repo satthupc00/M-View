@@ -34,13 +34,15 @@
     <div class="nav r" id="navR" title="Ảnh sau (→ / lăn chuột xuống)"><i><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></i></div>
     <div class="zoomtip" id="ztip"></div>
     <div class="loading" id="loading" hidden><i></i></div>
+    <div class="prog" id="prog" hidden><b id="progT"></b><div class="pbar" id="progBar"><i></i></div><span id="progD"></span></div>
     <div class="v3dwrap" id="v3d" hidden>
       <div class="v3dtools">
         <div class="seg" id="seg3" role="group" aria-label="Chế độ xem">
-          <button data-v="lit" title="Lit: bề mặt có ánh sáng (W)">Lit</button>
-          <button data-v="litwire" title="Lit + Wire: bề mặt kèm lưới (W)">Lit + Wire</button>
+          <button data-v="lit" title="Lit: có ánh sáng (W)">Lit</button>
+          <button data-v="unlit" title="Unlit: màu phẳng, không đổ bóng (W)">Unlit</button>
           <button data-v="wire" title="Wire: chỉ lưới (W)">Wire</button>
         </div>
+        <button class="chip3" id="b3Ov" title="Phủ lưới lên model (Q)">+ Lưới</button>
         <span class="sep"></span>
         <button class="ibtn sm on" id="b3Grid" title="Lưới sàn (G)" aria-label="Lưới sàn"><svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
         <span class="sep"></span>
